@@ -103,6 +103,7 @@ textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 50%,transparent
 .exam .progress{flex:1 1 160px;margin:0;min-width:120px}
 .exam .progress i{background:var(--good)}
 .leech{color:var(--bad)!important;border-color:var(--bad)!important}
+.notice button{padding:2px 8px;min-height:0;font-size:13px}
 .notice{background:color-mix(in srgb,var(--bad) 9%,transparent);border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:14px}
 .wrap{max-width:860px;margin:0 auto;padding:8px 16px 40px}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:6px 0 16px}
@@ -444,9 +445,9 @@ function adoptProgress(){ // una carta spostata in un altro pacchetto (stessa do
   if(n)dirty=true;return n;
 }
 function dailyQueue(){ // ripasso di oggi: tutti i ripassi in scadenza + una quota di carte nuove (prima i pacchetti con la verifica più vicina)
-  const rev=[],fresh=[];let doneNew=0;
+  const rev=[],fresh=[],seen=new Set();let doneNew=0;
   S.decks.filter(d=>!d.paused).sort((a,b)=>(examDay(a)==null?1e9:examDay(a))-(examDay(b)==null?1e9:examDay(b))).forEach(d=>model(d).cards.forEach(c=>{
-    const p=prog(d,c);if(!p)return fresh.push({...c,deck:d});if(p.first===today())doneNew++;if(p.due<=today())rev.push({...c,deck:d})}));
+    const p=prog(d,c);if(p&&p.first===today())doneNew++;if(seen.has(c.id))return;seen.add(c.id);if(!p)return fresh.push({...c,deck:d});if(p.due<=today())rev.push({...c,deck:d})}));
   const cap=S.newPerDay==null?15:+S.newPerDay,quota=cap<0?fresh.length:Math.max(0,cap-doneNew);
   return {rev,fresh:fresh.slice(0,quota),freshTotal:fresh.length};
 }
@@ -816,8 +817,13 @@ function renderRecall(v,d){
 /* ---------- FLASHCARD ---------- */
 let session=null,fcFilter='';
 function startSession(cards,mixed){session={mixed,queue:shuffle(cards.slice()),i:0,flipped:false,total:cards.length,ok:0,again:0}}
+function dupesOf(d){ // carte di questo pacchetto con la stessa domanda in un altro pacchetto
+  const mine=new Set(model(d).cards.map(c=>c.id)),out=[];
+  S.decks.forEach(o=>{if(o===d)return;const n=model(o).cards.filter(c=>mine.has(c.id)).length;if(n)out.push({deck:o,n})});
+  return out;
+}
 function renderFlash(v,d){
-  const m=model(d),c=counts(d),pl=plan(d);
+  const m=model(d),c=counts(d),pl=plan(d),dup=dupesOf(d);
   const branches=[...new Set(m.cards.map(x=>x.branch).filter(Boolean))],leeches=m.cards.filter(x=>isLeech(d,x));
   if(fcFilter==='__leech'?!leeches.length:fcFilter&&!branches.includes(fcFilter))fcFilter='';
   const list=m.cards.filter(x=>!fcFilter||(fcFilter==='__leech'?isLeech(d,x):x.branch===fcFilter));
@@ -845,6 +851,7 @@ function renderFlash(v,d){
       <span style="flex:1"></span>
       <label class="chk"><input type="checkbox" id="auto" ${d.auto!==false?'checked':''}> Genera flashcard anche dallo schema</label>
     </div>
+    ${dup.length?`<div class="notice">👯 <b>Carte doppie</b>: ${dup.map(x=>`${x.n} ${x.n===1?'carta è':'carte sono'} anche in «${esc(x.deck.name)}» <button class="dupgo" data-id="${x.deck.id}">Apri</button>`).join(' · ')}. Se uno dei due è un pacchetto vecchio, aprilo ed eliminalo con il pulsante in fondo alla pagina: nel ripasso di oggi le carte doppie vengono comunque chieste una volta sola.</div>`:''}
     ${leeches.length?`<div class="notice">⚠ <b>${leeches.length} ${leeches.length===1?'carta ostica':'carte ostiche'}</b>: ${leeches.length===1?'sbagliata':'sbagliate'} almeno ${LEECH} volte. Di solito la carta è troppo lunga o ambigua: riscrivila più semplice, dividila in due o aggiungi un'immagine.</div>`:''}
     <div class="cardlist">${list.map(x=>{const p=prog(d,x),b=p?p.box:0;return `<details><summary><span class="q">${esc(x.q)}</span>${isLeech(d,x)?'<span class="kind leech">ostica</span>':''}<span class="kind">${x.kind}</span><span class="lv" title="Livello ${b} di 5">${[1,2,3,4,5].map(i=>`<i class="${i<=b?'f':''}"></i>`).join('')}</span></summary><div class="a">${x.a}</div></details>`}).join('')||'<p class="hint">Nessuna flashcard. Nel testo scrivi <code>Domanda? :: Risposta</code>, <code>- **Termine**: definizione</code> o <code>{{parola da completare}}</code>, oppure attiva la generazione dallo schema.</p>'}</div>
     <p style="margin-top:18px;display:flex;gap:8px;flex-wrap:wrap">${c.total?'<button id="reset" class="danger">Azzera i progressi</button>':''}<button id="delDeck" class="danger">Elimina questo pacchetto</button></p>
@@ -859,6 +866,7 @@ function renderFlash(v,d){
   $('#flt').onchange=e=>{fcFilter=e.target.value;renderFlash(v,d)};
   $('#auto').onchange=e=>{d.auto=e.target.checked;save();render()};
   $('#delDeck').onclick=()=>deleteDeck(d);
+  v.querySelectorAll('.dupgo').forEach(b=>b.onclick=()=>{S.current=b.dataset.id;save();render()});
   if($('#reset'))$('#reset').onclick=()=>{if(confirm('Azzerare tutti i progressi di studio di questi appunti?')){S.progress[d.id]={};S.resets[d.id]=Date.now();dirty=true;save();render()}};
 }
 function renderSession(v){
