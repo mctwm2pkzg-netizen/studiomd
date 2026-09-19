@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2f5bd8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>StudioMD – schemi a stella e flashcard</title>
+<style>
+:root{--bg:#f6f5f1;--panel:#ffffff;--ink:#1f2328;--muted:#6b7280;--line:#e2dfd6;--accent:#2f5bd8;--accent-ink:#ffffff;--good:#1f9d63;--mid:#d98a1a;--bad:#d14343;--r:12px}
+@media (prefers-color-scheme:dark){:root{--bg:#15171b;--panel:#1e2127;--ink:#e8e8e6;--muted:#9aa1ad;--line:#30343c;--accent:#7c9cff;--accent-ink:#10131a}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;display:grid;grid-template-columns:270px 1fr;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:6px 12px}
+button:hover{border-color:var(--accent)}
+button:disabled{opacity:.5;cursor:default}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.ghost{background:transparent;border-color:transparent}
+button.danger:hover{border-color:var(--bad);color:var(--bad)}
+select,input[type=text],input[type=date]{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:6px 10px}
+aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+aside h1{font-size:18px;margin:0;padding:16px 16px 4px}
+aside h1 span{color:var(--accent)}
+aside .sub{color:var(--muted);font-size:12.5px;padding:0 16px 10px}
+.actions{display:flex;gap:8px;padding:0 12px 10px;flex-wrap:wrap}
+.actions button{flex:1;white-space:nowrap}
+#mix{margin:0 12px 12px;text-align:left;font-weight:600}
+#mix small{display:block;font-weight:400;color:var(--muted)}
+#decks{overflow:auto;flex:1;padding:0 8px}
+.grp{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:12px 10px 3px;font-weight:700}
+.deck{padding:9px 10px;border-radius:9px;cursor:pointer;margin-bottom:2px}
+.deck:hover{background:var(--bg)}
+.deck.on{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.deck b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.deck small{color:var(--muted)}
+.deck .due{color:var(--mid);font-weight:600}
+aside footer{padding:10px 12px;border-top:1px solid var(--line);display:flex;gap:8px}
+aside footer button{flex:1;font-size:12.5px;padding:5px 6px}
+main{display:flex;flex-direction:column;min-width:0;min-height:0}
+header{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+#menu{display:none}
+#name{flex:1;min-width:0;font-size:17px;font-weight:650;border-color:transparent;background:transparent}
+#name:hover,#name:focus{border-color:var(--line);background:var(--bg)}
+#pomo{font-variant-numeric:tabular-nums;white-space:nowrap}
+#pomo.run{border-color:var(--good);color:var(--good);font-weight:600}
+.tabs{display:flex;gap:4px}
+.tabs button{border-color:transparent;background:transparent;color:var(--muted);font-weight:600}
+.tabs button.on{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+#view{flex:1;min-height:0;overflow:auto;position:relative}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 16px}
+.toolbar .sp{flex:1}
+.hint{color:var(--muted);font-size:13px}
+/* editor */
+.editor{display:grid;grid-template-columns:1fr 340px;gap:14px;padding:0 16px 16px;height:calc(100% - 56px);min-height:420px}
+.editor textarea,.recall textarea{width:100%;height:100%;resize:none;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);padding:14px;font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;tab-size:2}
+textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 50%,transparent)}
+.outline{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);padding:12px 14px;overflow:auto}
+.outline h3{margin:0 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.outline ul{margin:0;padding-left:16px;list-style:none;border-left:2px solid var(--line)}
+.outline>ul{padding-left:0;border:0}
+.outline li{margin:3px 0;font-size:13.5px}
+.outline .fc{font-size:11px;background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good);border-radius:5px;padding:0 5px;margin-left:4px;font-weight:700}
+.outline .ans{color:var(--muted)}
+.cz{background:color-mix(in srgb,var(--mid) 25%,transparent);border-radius:4px;padding:0 3px}
+/* schema */
+.swrap{height:100%;display:flex;flex-direction:column}
+#schema{flex:1;min-height:0}
+#svg{width:100%;height:100%;display:block;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+#svg.drag{cursor:grabbing}
+</style>
+<style id="schemacss">
+.link,.under{fill:none;stroke:var(--c);stroke-width:2;stroke-linecap:round}
+.node{cursor:pointer}
+.node .hit{fill:transparent}
+.node:hover .hit{fill:color-mix(in srgb,var(--c) 10%,transparent)}
+.node text{fill:var(--ink);font:400 14px system-ui,-apple-system,"Segoe UI",sans-serif}
+.node.ans text{fill:var(--muted);font-style:italic}
+.node.d1 .box{fill:color-mix(in srgb,var(--c) 16%,var(--panel));stroke:var(--c);stroke-width:1.5}
+.node.d1 text{font-weight:600;font-size:15px}
+.node.d0 .box{fill:var(--accent)}
+.node.d0 text{fill:var(--accent-ink);font-weight:700;font-size:17px}
+.node.cov .hit{fill:var(--panel);stroke:var(--c);stroke-dasharray:5 4;stroke-width:1.2}
+.node.cov text{fill:var(--muted);font-weight:700;font-style:normal}
+.badge circle{fill:var(--c)}
+.badge text{fill:#fff!important;font:700 11px system-ui,sans-serif!important}
+</style>
+<style>
+/* flashcards */
+.exam{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;display:flex;gap:10px 14px;flex-wrap:wrap;align-items:center}
+.exam .progress{flex:1 1 160px;margin:0;min-width:120px}
+.exam .progress i{background:var(--good)}
+.leech{color:var(--bad)!important;border-color:var(--bad)!important}
+.notice{background:color-mix(in srgb,var(--bad) 9%,transparent);border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:14px}
+.wrap{max-width:860px;margin:0 auto;padding:8px 16px 40px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:6px 0 16px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.stat b{font-size:24px;display:block;line-height:1.1}
+.stat small{color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+label.chk{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13.5px}
+.cardlist details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:6px}
+.cardlist summary{cursor:pointer;display:flex;gap:10px;align-items:center}
+.cardlist summary span.q{flex:1}
+.cardlist .a{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.lv{display:inline-flex;gap:2px}
+.lv i{width:6px;height:12px;border-radius:2px;background:var(--line)}
+.lv i.f{background:var(--good)}
+.kind{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:0 5px}
+.progress{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:4px 0 18px}
+.progress i{display:block;height:100%;background:var(--accent);transition:width .25s}
+.flash{background:var(--panel);border:1px solid var(--line);border-radius:18px;min-height:300px;padding:28px;display:flex;flex-direction:column;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.06)}
+.flash .ctx{color:var(--muted);font-size:12.5px;margin-bottom:10px}
+.flash .q{font-size:22px;font-weight:650;line-height:1.35;margin:auto 0;text-align:center}
+.flash .a{border-top:1px dashed var(--line);margin-top:20px;padding-top:18px;font-size:18px}
+.flash .a ul,.flash .a ol{margin:0;padding-left:26px}
+.flash .a li{margin:3px 0}
+.cardlist .a ul,.cardlist .a ol{margin:0;padding-left:22px}
+.flash .tap{color:var(--muted);text-align:center;font-size:13px;margin-top:16px}
+.grades{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.grades button{padding:12px;font-weight:650;color:#fff;border:0}
+.grades small{display:block;font-weight:400;opacity:.85}
+.g0{background:var(--bad)}.g1{background:var(--mid)}.g2{background:var(--good)}
+.done{text-align:center;padding:50px 10px}
+.done h2{font-size:26px;margin:0 0 6px}
+img{max-width:100%;border-radius:8px}
+.flash img{display:block;max-height:340px;margin:12px auto}
+.cardlist img,.rc img{display:block;max-height:220px;margin:8px 0}
+.outline img{max-height:60px;vertical-align:middle}
+/* cammina */
+#walkBtn{margin:-4px 12px 12px;font-weight:600;text-align:left}
+#cloud{margin:0 12px 8px;font-size:13px;text-align:left}
+.walk{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;gap:12px;padding:max(12px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));touch-action:pan-y}
+.wtop{display:flex;gap:8px;align-items:center;font-weight:700;font-size:17px}
+.wtop button{padding:10px 14px;font-size:15px}
+.wtop button.on{border-color:var(--good);color:var(--good)}
+.wcard{flex:1;min-height:0;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px;display:flex;flex-direction:column;justify-content:center;text-align:center}
+.wcard .ctx{color:var(--muted);font-size:13px;margin-bottom:10px}
+.wq{font-size:clamp(24px,6.4vw,40px);font-weight:750;line-height:1.25}
+.wa{font-size:clamp(22px,5.6vw,34px);line-height:1.3;margin-top:18px;padding-top:18px;border-top:2px dashed var(--line);color:var(--good);font-weight:600}
+.wa ul,.wa ol{text-align:left;margin:0;padding-left:1.2em}
+.wcard img{max-height:32vh;display:block;margin:0 auto 12px}
+.wshow{min-height:120px;font-size:26px;font-weight:750;background:var(--accent);color:var(--accent-ink);border:0;border-radius:20px}
+.wgrades{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.wgrades button{min-height:120px;font-size:44px;font-weight:800;color:#fff;border:0;border-radius:20px;line-height:1}
+.wgrades small{display:block;font-size:14px;font-weight:600;margin-top:8px}
+.whint{text-align:center;color:var(--muted);font-size:13.5px}
+.wdone{margin:auto;text-align:center}
+.wdone h2{font-size:30px}
+.wbig{min-height:80px;min-width:200px;font-size:22px}
+/* cloud */
+.cloud input{width:100%;max-width:360px;display:block;margin:6px 0 12px;border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:10px 12px;font-size:16px}
+.cloud .err{color:var(--bad);font-weight:600}
+.cloud .okmsg{color:var(--good);font-weight:600}
+/* richiamo libero */
+.recall textarea{height:220px;font-family:inherit;font-size:15px}
+.rc{display:flex;gap:8px;align-items:flex-start;padding:5px 8px;border-radius:8px;margin:2px 0}
+.rc.ok{background:color-mix(in srgb,var(--good) 12%,transparent)}
+.rc.no{background:color-mix(in srgb,var(--bad) 10%,transparent)}
+.score{font-size:20px;font-weight:700;margin:14px 0 8px}
+/* guida */
+.guide h2{margin-top:26px}
+.guide pre{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;overflow:auto;font:13.5px/1.55 ui-monospace,Menlo,monospace}
+code{background:color-mix(in srgb,var(--accent) 12%,transparent);padding:1px 5px;border-radius:5px;font-size:.92em}
+.guide table{border-collapse:collapse;width:100%}
+.guide td,.guide th{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+.empty{display:grid;place-items:center;height:100%;text-align:center;color:var(--muted);padding:30px}
+#drop{position:fixed;inset:0;background:color-mix(in srgb,var(--accent) 25%,transparent);display:none;place-items:center;font-size:26px;font-weight:700;z-index:50;border:4px dashed var(--accent)}
+#drop.on{display:grid}
+@media (max-width:820px){
+ body{grid-template-columns:1fr}
+ aside{position:fixed;inset:0 25% 0 0;z-index:20;transform:translateX(-101%);transition:transform .2s;box-shadow:0 0 40px rgba(0,0,0,.3)}
+ aside.open{transform:none}
+ #menu{display:block}
+ header{flex-wrap:wrap}
+ .tabs{order:3;width:100%;overflow:auto}
+ .editor{grid-template-columns:1fr;height:auto}
+ .editor textarea{height:55vh}
+ .stats{grid-template-columns:repeat(2,1fr)}
+ .flash .q{font-size:19px}
+}
+@media print{
+ body{display:block;overflow:visible;background:#fff}
+ aside,header,.toolbar{display:none!important}
+ #view{overflow:visible}
+ .swrap{height:95vh}
+}
+</style>
+</head>
+<body>
+<aside id="side">
+  <h1>Studio<span>MD</span></h1>
+  <div class="sub" id="streak"></div>
+  <div class="actions">
+    <button class="primary" id="new">+ Nuovo</button>
+    <button id="imp">Importa .md</button>
+    <button id="impdir" title="Scegli la cartella flashcards: ogni sottocartella è un argomento">Importa cartella</button>
+    <input type="file" id="dir" webkitdirectory multiple hidden>
+    <input type="file" id="file" accept=".md,.markdown,.txt,text/markdown,text/plain" multiple hidden>
+  </div>
+  <button id="mix"></button>
+  <button id="walkBtn"></button>
+  <div id="decks"></div>
+  <button id="cloud"></button>
+  <footer>
+    <button id="bkout" title="Salva tutti gli appunti e i progressi in un file">Backup</button>
+    <button id="bkin" title="Ripristina da un file di backup">Ripristina</button>
+    <input type="file" id="bkfile" accept=".json,application/json" hidden>
+  </footer>
+</aside>
+<main>
+  <header>
+    <button id="menu" class="ghost" aria-label="Elenco appunti">☰</button>
+    <input type="text" id="name" aria-label="Titolo degli appunti" placeholder="Titolo">
+    <button id="pomo" title="Timer pomodoro: 25 minuti di studio, 5 di pausa. Clic per avviare o mettere in pausa."></button>
+    <button id="pomoR" class="ghost" title="Azzera il timer" aria-label="Azzera il timer">↺</button>
+    <nav class="tabs" id="tabs">
+      <button data-t="testo">Testo</button>
+      <button data-t="schema">Schema</button>
+      <button data-t="flash">Flashcard</button>
+      <button data-t="guida">Guida</button>
+    </nav>
+  </header>
+  <div id="view"></div>
+</main>
+<div id="drop">Rilascia i file .md per importarli</div>
+
+<script src="config.js"></script>
+<script>
+'use strict';
+/* ---------- utilità ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let IMGBASE=''; // cartella rispetto a cui risolvere le immagini degli appunti aperti
+const normPath=p=>{const o=[];p.split('/').forEach(x=>{if(x==='..'&&o.length&&o[o.length-1]!=='..')o.pop();else if(x&&x!=='.')o.push(x)});return o.join('/')};
+const IMGS={},IMGH={},IMGD={}; // immagini scaricate dal cloud (telefono): chiave = percorso normalizzato; IMGD serve all'esportazione PNG
+const setImg=(k,data,h)=>{const [hd,b]=data.split(','),bin=atob(b),a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);
+  const u=URL.createObjectURL(new Blob([a],{type:(hd.match(/:(.*?);/)||[])[1]||'image/jpeg'}));if(IMGS[k])URL.revokeObjectURL(IMGS[k]);IMGS[k]=u;IMGD[u]=data;IMGH[k]=h};
+const imgUrl=u=>{if(/^([a-z]+:|\/)/i.test(u))return u;const k=normPath(IMGBASE+u);return IMGS[k]||k};
+const inline=s=>esc(s).replace(/!\[([^\]]*)\]\(([^)]+?)\)/g,(m,a,u)=>`<img alt="${a}" src="${encodeURI(imgUrl(u.trim()))}">`).replace(/\{\{(.+?)\}\}/g,'<span class="cz">$1</span>').replace(/\[([^\]]+)\]\([^)]*\)/g,'$1').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g,'$1<i>$2</i>').replace(/`([^`]+)`/g,'<code>$1</code>');
+const plain=s=>s.replace(/!\[([^\]]*)\]\([^)]*\)/g,(m,a)=>('🖼 '+a).trim()).replace(/\{\{(.+?)\}\}/g,'$1').replace(/\[([^\]]+)\]\([^)]*\)/g,'$1').replace(/\*\*(.+?)\*\*/g,'$1').replace(/(^|[^*])\*([^*\s][^*]*)\*/g,'$1$2').replace(/`([^`]+)`/g,'$1');
+const hash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36)};
+const today=()=>{const d=new Date();return Math.floor((d.getTime()-d.getTimezoneOffset()*6e4)/864e5)};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const download=(name,text,type)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+
+const SAMPLE=`# Unione Europea
+
+## Istituzioni
+- **Parlamento europeo**: eletto direttamente dai cittadini ogni 5 anni
+- **Consiglio europeo**: riunisce i capi di Stato e di governo
+- **Commissione europea**: propone le leggi e ne controlla l'applicazione
+- **Corte di giustizia**: garantisce il rispetto del diritto UE
+  - Dove ha sede la Corte di giustizia? :: A Lussemburgo
+- Dove ha sede la Banca centrale europea? :: A Francoforte
+
+## Tappe storiche
+- 1951 – CECA (carbone e acciaio)
+- 1957 – Trattati di Roma: nasce la CEE
+- Il Trattato di {{Maastricht}} del {{1992}} istituisce l'Unione Europea
+- 2002 – L'euro entra in circolazione
+
+## Simboli
+- Bandiera: 12 stelle dorate su fondo blu
+- Inno: *Inno alla gioia* di Beethoven
+- Festa dell'Europa: 9 maggio
+- Qual è il motto dell'UE? :: «Unita nella diversità»
+`;
+
+/* ---------- stato e salvataggio ---------- */
+const KEY='studiomd-v1';
+let S;
+try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+const DISK=window.STUDIOMD_FILES||null; // generato da flashcards/aggiorna_indice.py
+if(!S||!Array.isArray(S.decks)){
+  S={decks:DISK||/^https:/.test((window.STUDIOMD_CONFIG||{}).url||'')?[]:[{id:uid(),name:'Esempio – Unione Europea',md:SAMPLE,auto:true,layout:'star',updated:Date.now()}],progress:{},current:null,tab:'schema'};
+}
+S.days=S.days||{};S.progress=S.progress||{};S.ignore=S.ignore||{};S.deleted=S.deleted||{};S.resets=S.resets||{};
+S.decks.forEach(d=>{ // gli appunti nati da un file hanno un identificativo stabile, uguale su tutti i dispositivi
+  if(!d.src)return;const id='f_'+hash(d.src);if(d.id===id)return;
+  if(S.progress[d.id]){S.progress[id]=S.progress[d.id];delete S.progress[d.id]}
+  if(S.current===d.id)S.current=id;d.id=id;
+});
+const snap={},deckJson=d=>{const {t,...x}=d;return JSON.stringify(x)};let dirty=false;
+S.decks.forEach(d=>snap[d.id]=deckJson(d));
+function stampDecks(){S.decks.forEach(d=>{const j=deckJson(d);if(snap[d.id]!==j||!d.t){snap[d.id]=j;d.t=Date.now();dirty=true}})} // t = ultima modifica, serve alla sincronizzazione
+const pretty=x=>x.replace(/\.[^.]+$/,'').replace(/^\d+[-_ ]*/,'').replace(/[-_]+/g,' ').replace(/^./,c=>c.toUpperCase());
+function syncFiles(files){ // il file su disco prevale solo quando è cambiato dall'ultima sincronizzazione
+  let n=0;
+  Object.keys(files).sort().forEach(path=>{
+    const md=files[path],h=hash(md),t=md.match(/^#\s+(.+)$/m),name=t?t[1].trim():pretty(path.split('/').pop());
+    if(S.ignore[path]===h)return;
+    const d=S.decks.find(x=>x.src===path);
+    if(!d){S.decks.push({id:'f_'+hash(path),src:path,srcHash:h,name,md,auto:false,layout:'star',updated:Date.now()});n++}
+    else if(d.srcHash!==h){Object.assign(d,{md,srcHash:h,name,updated:Date.now()});n++}
+  });
+  return n;
+}
+if(DISK)syncFiles(DISK);
+let saveT;
+function persist(){stampDecks();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){console.warn('Salvataggio non riuscito',e)}}
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{persist();if(dirty)cloudSoon()},200)}
+const cur=()=>S.decks.find(d=>d.id===S.current);
+if(!cur())S.current=S.decks[0]?S.decks[0].id:null;
+if(DISK)save();
+
+/* ---------- parser markdown → albero + flashcard ---------- */
+function parse(md,name){
+  const root={text:name||'Appunti',children:[],virtual:true};
+  const add=(p,text)=>{const n={text:text.trim(),children:[]};p.children.push(n);return n};
+  let hs=[{level:0,node:root}],bs=[],last=null,code=false;
+  const lines=md.replace(/\r/g,'').split('\n');
+  let i=0;
+  if(lines[0]&&lines[0].trim()==='---'){i=1;while(i<lines.length&&lines[i].trim()!=='---')i++;i++}
+  for(;i<lines.length;i++){
+    let raw=lines[i],m;
+    if(/^\s*(```|~~~)/.test(raw)){code=!code;continue}
+    if(code)continue;
+    if(!raw.trim()){last=null;continue}
+    if(/^\s*([-*_])(\s*\1){2,}\s*$/.test(raw)||/^\s*\|/.test(raw)||/^\s*<!--/.test(raw))continue;
+    raw=raw.replace(/^\s*>\s?/,'');
+    if(m=raw.match(/^(#{1,6})\s+(.*?)\s*#*\s*$/)){
+      const level=m[1].length;
+      while(hs[hs.length-1].level>=level)hs.pop();
+      const n=add(hs[hs.length-1].node,m[2]);n.heading=true;
+      hs.push({level,node:n});bs=[];last=null;continue;
+    }
+    if(m=raw.match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/)){
+      const ind=m[1].replace(/\t/g,'    ').length;
+      while(bs.length&&bs[bs.length-1].ind>=ind)bs.pop();
+      const parent=bs.length?bs[bs.length-1].node:hs[hs.length-1].node;
+      const n=add(parent,m[3].replace(/^\[[ xX]\]\s*/,''));n.ordered=/\d/.test(m[2]);
+      bs.push({ind,node:n});last=n;continue;
+    }
+    if(last){last.text+=' '+raw.trim();continue}
+    last=add(hs[hs.length-1].node,raw);bs=[];
+  }
+  let r=root;
+  if(root.children.length===1&&root.children[0].heading)r=root.children[0];
+  let id=0;
+  (function fix(n,depth,branch,pkey){
+    n.id=id++;n.depth=depth;n.branch=branch;
+    const qa=n.text.match(/^(.+?)\s*::\s*(.+)$/);
+    if(qa&&depth>0){n.text=qa[1];n.qa=true;n.answer=qa[2];n.children.unshift({text:qa[2],children:[],isAnswer:true})}
+    const ql=!qa&&depth>0&&n.children.length&&n.text.match(/^(.+?)\s*::\s*$/); // «Domanda? ::» con i punti rientrati sotto = risposta a elenco
+    if(ql){n.text=ql[1];n.qa=true;n.answerList=true;n.answer=n.children.map(c=>plain(c.text)).join('; ');n.children.forEach(c=>c.isAnswer=true)}
+    const df=n.text.match(/^\*\*(.+?)\*\*\s*[:–—-]\s+(.+)$/);
+    if(df&&!n.qa){n.term=plain(df[1]);n.def=df[2]}
+    if(!n.qa&&/\{\{.+?\}\}/.test(n.text))n.cloze=true;
+    n.key=hash(pkey+'/'+n.text);
+    n.children.forEach((c,k)=>{c.parent=n;fix(c,depth+1,depth===0?k:branch,n.key)});
+  })(r,0,0,'');
+  return r;
+}
+const listHtml=ks=>{const t=ks[0].ordered?'ol':'ul';return `<${t}>`+ks.map(k=>'<li>'+inline(k.text)+(k.children.length?listHtml(k.children):'')+'</li>').join('')+`</${t}>`};
+function makeCards(root,auto){
+  const out=[],seen={};
+  const push=(q,a,ctx,branch,kind,qh)=>{let id=hash(q);while(seen[id])id+='x';seen[id]=1;out.push({id,q,qh:qh||esc(q),a,ctx,branch,kind})};
+  (function walk(n,path,branchName){
+    const ctx=path.join(' › ');
+    if(n.isAnswer)return;
+    if(n.qa)push(plain(n.text),n.answerList?listHtml(n.children):inline(n.answer),ctx,branchName,'domanda',inline(n.text));
+    else{
+      if(n.term)push(n.term,inline(n.def),ctx,branchName,'definizione');
+      if(n.cloze){const t=n.text.replace(/\{\{.+?\}\}/g,'[ … ]');push(plain(t),inline(n.text),ctx,branchName,'completa',inline(t))}
+      const kids=n.children.filter(c=>!c.isAnswer&&!c.qa);
+      if(auto&&kids.length>=2)push((n.term||plain(n.text))+': quali sono i punti principali?','<ul>'+kids.map(k=>'<li>'+inline(k.text)+'</li>').join('')+'</ul>',ctx,branchName,'schema');
+    }
+    n.children.forEach(c=>walk(c,[...path,n.term||plain(n.text)],n.depth===0?plain(c.text):branchName));
+  })(root,[],'');
+  return out;
+}
+const cache={};
+function model(d){
+  IMGBASE=d.src?'flashcards/'+d.src.split('/').slice(0,-1).join('/')+'/':'';
+  const k=d.name+'|'+(d.auto!==false)+'|'+d.md;
+  if(!cache[d.id]||cache[d.id].k!==k){const root=parse(d.md,d.name);cache[d.id]={k,root,cards:makeCards(root,d.auto!==false)}}
+  return cache[d.id];
+}
+
+/* ---------- ripetizione dilazionata (Leitner) ---------- */
+const INTERVALS=[0,1,3,7,14,30];
+const prog=(d,c)=>((S.progress[d.id]||{})[c.id])||null;
+const isDue=(d,c)=>{const p=prog(d,c);return !p||p.due<=today()};
+function grade(d,c,g){
+  const P=S.progress[d.id]||(S.progress[d.id]={});
+  const p=P[c.id]||{box:0,due:0,n:0};p.t=Date.now();dirty=true;
+  if(!p.n)p.first=today();
+  if(g===0)p.lapses=(p.lapses||0)+1;
+  if(g===0)p.box=1;else if(g===1)p.box=Math.max(1,p.box);else p.box=Math.min(5,p.box+1);
+  p.due=today()+(g===0?0:g===1?1:INTERVALS[p.box]);p.n++;P[c.id]=p;
+  const E=examDay(d);if(E!=null&&E-1>today())p.due=Math.min(p.due,E-1); // ogni carta torna almeno una volta prima della verifica
+  S.days[today()]=(S.days[today()]||0)+1;save();
+}
+const LEECH=4; // errori dopo i quali una carta è «ostica»
+const isLeech=(d,c)=>{const p=prog(d,c);return !!p&&(p.lapses||0)>=LEECH&&p.box<4};
+const examDay=d=>{if(!d.exam)return null;const [y,m,g]=d.exam.split('-').map(Number);return Date.UTC(y,m-1,g)/864e5};
+function plan(d){ // piano verso la verifica: carte nuove distribuite sui giorni rimasti (finendo 2 giorni prima)
+  const E=examDay(d);if(E==null)return null;
+  const left=E-today(),cs=model(d).cards,fresh=cs.filter(c=>!prog(d,c)),rev=cs.filter(c=>prog(d,c)&&isDue(d,c));
+  const doneNew=cs.filter(c=>{const p=prog(d,c);return p&&p.first===today()}).length; // carte nuove già viste oggi: contano nella quota del giorno
+  const perDay=left>0?Math.max(0,Math.ceil((fresh.length+doneNew)/Math.max(1,left-2))-doneNew):fresh.length;
+  const ready=cs.length?Math.round(cs.filter(c=>{const p=prog(d,c);return p&&p.box>=3}).length/cs.length*100):0;
+  return {left,fresh,rev,todayNew:fresh.slice(0,perDay),ready};
+}
+function counts(d){
+  const cs=model(d).cards;let due=0,learned=0,fresh=0;
+  cs.forEach(c=>{const p=prog(d,c);if(!p)fresh++;if(isDue(d,c))due++;if(p&&p.box>=4)learned++});
+  return {total:cs.length,due,learned,fresh};
+}
+function streak(){let t=today(),n=0;if(!S.days[t])t--;while(S.days[t]){n++;t--}return n}
+
+/* ---------- barra laterale ---------- */
+function renderSide(){
+  let allDue=0;
+  const group=d=>d.src&&d.src.includes('/')?pretty(d.src.split('/')[0]):d.src?'Flashcards':'';
+  const list=S.decks.slice().sort((a,b)=>(a.src?1:0)-(b.src?1:0)||(a.src||'').localeCompare(b.src||''));let lastG=null;
+  $('#decks').innerHTML=list.map(d=>{
+    const c=counts(d);allDue+=c.due;const g=group(d),head=g!==lastG&&g?`<div class="grp">📁 ${esc(g)}</div>`:'';lastG=g;
+    return head+`<div class="deck ${d.id===S.current?'on':''}" data-id="${d.id}"><b>${esc(d.name)}</b><small>${c.total} flashcard${c.due?` · <span class="due">${c.due} da ripassare</span>`:''}${examDay(d)!=null&&examDay(d)>=today()?` · 📅 ${examDay(d)-today()||'oggi'}${examDay(d)-today()?' g':''}`:''}</small></div>`}).join('')||'<div class="hint" style="padding:12px">Nessun appunto. Crea o importa un file .md.</div>';
+  const st=streak(),n=S.days[today()]||0;
+  $('#streak').innerHTML=st?`🔥 Serie di ${st} ${st===1?'giorno':'giorni'} · oggi ${n} ripassi`:'Schemi a stella e flashcard dai tuoi appunti .md';
+  $('#mix').innerHTML=`Ripasso di oggi<small>${allDue?allDue+' flashcard in scadenza, da tutti gli appunti mescolati':'Niente in scadenza: sei in pari ✓'}</small>`;
+  $('#mix').disabled=!allDue;
+  $('#walkBtn').innerHTML='🚶 Ripassa camminando';cloudDraw();
+}
+const closeSide=()=>$('#side').classList.remove('open');
+$('#decks').onclick=e=>{const el=e.target.closest('.deck');if(!el)return;S.current=el.dataset.id;session=null;recall=null;needFit=true;closeSide();save();render()};
+$('#mix').onclick=()=>{
+  const cards=[];S.decks.forEach(d=>model(d).cards.forEach(c=>{if(isDue(d,c))cards.push({...c,deck:d})}));
+  if(!cards.length)return;
+  startSession(cards,true);S.tab='flash';closeSide();render();
+};
+$('#walkBtn').onclick=()=>{
+  let cards=[];S.decks.forEach(d=>model(d).cards.forEach(c=>{if(isDue(d,c))cards.push({...c,deck:d})}));
+  if(!cards.length)S.decks.forEach(d=>model(d).cards.forEach(c=>cards.push({...c,deck:d}))); // niente in scadenza: ripasso libero di tutto
+  if(cards.length){closeSide();startWalk(cards,true)}
+};
+$('#cloud').onclick=()=>{S.tab='cloud';closeSide();render()};
+$('#menu').onclick=()=>$('#side').classList.toggle('open');
+$('#new').onclick=()=>{
+  const d={id:uid(),name:'Nuovi appunti',md:'# Argomento centrale\n\n## Primo ramo\n- Punto importante\n- **Termine**: definizione\n- Domanda? :: Risposta\n\n## Secondo ramo\n- Punto\n',auto:true,layout:'star',updated:Date.now()};
+  S.decks.unshift(d);S.current=d.id;S.tab='testo';session=null;recall=null;closeSide();save();render();
+};
+$('#imp').onclick=()=>$('#file').click();
+$('#impdir').onclick=()=>$('#dir').click();
+$('#dir').onchange=e=>{
+  const fs=[...e.target.files].filter(f=>/\.(md|markdown)$/i.test(f.name));e.target.value='';
+  if(!fs.length){alert('Nessun file .md nella cartella scelta.');return}
+  Promise.all(fs.map(f=>f.text().then(md=>[(f.webkitRelativePath||f.name).split('/').slice(1).join('/')||f.name,md]))).then(rs=>{
+    const n=syncFiles(Object.fromEntries(rs));if(!cur())S.current=S.decks[0]?S.decks[0].id:null;
+    save();render();alert(n?n+' appunti aggiunti o aggiornati.':'Tutto già aggiornato.');
+  });
+};
+$('#file').onchange=e=>{importFiles(e.target.files);e.target.value=''};
+function importFiles(files){
+  const list=[...files].filter(f=>/\.(md|markdown|txt)$/i.test(f.name)||/^text\//.test(f.type));
+  if(!list.length){alert('Scegli file .md, .markdown o .txt');return}
+  Promise.all(list.map(f=>f.text().then(md=>({name:f.name.replace(/\.[^.]+$/,''),md})))).then(rs=>{
+    rs.forEach(r=>{const d={id:uid(),name:r.name,md:r.md,auto:true,layout:'star',updated:Date.now()};S.decks.unshift(d);S.current=d.id});
+    S.tab='schema';session=null;recall=null;needFit=true;closeSide();save();render();
+  });
+}
+let dragN=0;
+addEventListener('dragenter',e=>{if(e.dataTransfer&&[...e.dataTransfer.types].includes('Files')){dragN++;$('#drop').classList.add('on')}});
+addEventListener('dragleave',()=>{if(--dragN<=0){dragN=0;$('#drop').classList.remove('on')}});
+addEventListener('dragover',e=>e.preventDefault());
+addEventListener('drop',e=>{e.preventDefault();dragN=0;$('#drop').classList.remove('on');if(e.dataTransfer.files.length)importFiles(e.dataTransfer.files)});
+$('#bkout').onclick=()=>download('StudioMD-backup-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(S),'application/json');
+$('#bkin').onclick=()=>$('#bkfile').click();
+$('#bkfile').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;f.text().then(t=>{
+  try{const B=JSON.parse(t);if(!Array.isArray(B.decks))throw 0;
+    if(!confirm(`Il backup contiene ${B.decks.length} appunti. Quelli già presenti verranno sostituiti con la versione del backup, gli altri aggiunti. Continuare?`))return;
+    B.decks.forEach(b=>{const i=S.decks.findIndex(d=>d.id===b.id);if(i>=0)S.decks[i]=b;else S.decks.push(b)});
+    Object.assign(S.progress,B.progress||{});Object.assign(S.days,B.days||{});
+    if(!cur())S.current=S.decks[0]?S.decks[0].id:null;save();render();
+  }catch(err){alert('File di backup non valido.')}})};
+
+/* ---------- intestazione e pomodoro ---------- */
+$('#name').oninput=e=>{const d=cur();if(!d)return;d.name=e.target.value||'Senza titolo';d.updated=Date.now();save();renderSide()};
+$('#tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.tab=b.dataset.t;save();render()};
+const POMO={studio:25*60,pausa:5*60};
+let pomo={mode:'studio',left:POMO.studio,run:false,end:0};
+function pomoDraw(){
+  const m=String(Math.floor(pomo.left/60)).padStart(2,'0'),s=String(pomo.left%60).padStart(2,'0');
+  $('#pomo').textContent=(pomo.mode==='studio'?'⏱ ':'☕ Pausa ')+m+':'+s;$('#pomo').classList.toggle('run',pomo.run);
+  $('#pomoR').hidden=!pomo.run&&pomo.mode==='studio'&&pomo.left===POMO.studio;
+}
+function beep(){try{const A=new (window.AudioContext||window.webkitAudioContext)();[0,.35,.7].forEach(t=>{const o=A.createOscillator(),g=A.createGain();o.frequency.value=880;o.connect(g);g.connect(A.destination);g.gain.setValueAtTime(.2,A.currentTime+t);g.gain.exponentialRampToValueAtTime(.001,A.currentTime+t+.3);o.start(A.currentTime+t);o.stop(A.currentTime+t+.3)})}catch(e){}}
+setInterval(()=>{
+  if(!pomo.run)return;
+  pomo.left=Math.max(0,Math.ceil((pomo.end-Date.now())/1000));
+  if(!pomo.left){beep();pomo.mode=pomo.mode==='studio'?'pausa':'studio';pomo.left=POMO[pomo.mode];pomo.run=false}
+  pomoDraw();
+},500);
+$('#pomo').onclick=()=>{pomo.run=!pomo.run;if(pomo.run)pomo.end=Date.now()+pomo.left*1000;pomoDraw()};
+$('#pomoR').onclick=()=>{pomo={mode:'studio',left:POMO.studio,run:false,end:0};pomoDraw()};
+
+function render(){
+  renderSide();pomoDraw();
+  const d=cur();
+  $('#name').value=d?d.name:'';$('#name').disabled=!d;
+  [...$('#tabs').children].forEach(b=>b.classList.toggle('on',b.dataset.t===S.tab));
+  const v=$('#view');
+  if(S.tab==='guida')return renderGuide(v);
+  if(S.tab==='cloud')return renderCloud(v);
+  if(S.tab==='flash'&&session)return renderSession(v);
+  if(!d){v.innerHTML='<div class="empty"><div><h2>Nessun appunto aperto</h2><p>Crea nuovi appunti o importa un file .md dalla barra laterale.</p></div></div>';return}
+  if(S.tab==='testo')renderEditor(v,d);
+  else if(S.tab==='schema')recall?renderRecall(v,d):renderSchema(v,d);
+  else renderFlash(v,d);
+}
+
+/* ---------- TESTO ---------- */
+function renderEditor(v,d){
+  v.innerHTML=`<div class="toolbar">
+    <button data-ins="\n## Nuovo ramo\n- ">+ Ramo</button>
+    <button data-ins="\n- ">+ Punto</button>
+    <button data-ins="\n  - ">+ Sotto-punto</button>
+    <button data-ins="\n- **Termine**: definizione">+ Definizione</button>
+    <button data-ins="\n- Domanda? :: Risposta">+ Domanda</button>
+    <button data-ins="\n- Frase con la {{parola chiave}} da completare">+ Completamento</button>
+    <span class="sp"></span>
+    ${d.src?`<span class="hint" title="Questi appunti arrivano dal file su disco: quando il file cambia, l'app si aggiorna da sola. Se li modifichi qui, usa «Esporta .md» per riportare le modifiche nel file.">📁 flashcards/${esc(d.src)}</span>`:''}
+    <button id="exp">Esporta .md</button>
+    <button id="del" class="danger">Elimina</button>
+  </div>
+  <div class="editor"><textarea id="md" spellcheck="false" placeholder="# Argomento centrale"></textarea><div class="outline" id="outline"></div></div>`;
+  const ta=$('#md');ta.value=d.md;
+  const outline=()=>{
+    const m=model(d);
+    const li=n=>`<li>${n.isAnswer?'<span class="ans">↳ '+inline(n.text)+'</span>':inline(n.text)}${n.qa||n.term||n.cloze?'<span class="fc">FC</span>':''}${n.children.length?'<ul>'+n.children.map(li).join('')+'</ul>':''}</li>`;
+    $('#outline').innerHTML=`<h3>Struttura · ${m.cards.length} flashcard</h3><ul>${li(m.root)}</ul>`;
+  };
+  outline();
+  let t;ta.oninput=()=>{d.md=ta.value;d.updated=Date.now();save();clearTimeout(t);t=setTimeout(()=>{outline();renderSide()},250)};
+  ta.onkeydown=e=>{if(e.key==='Tab'){e.preventDefault();ta.setRangeText('  ',ta.selectionStart,ta.selectionEnd,'end');ta.oninput()}};
+  v.querySelector('.toolbar').onclick=e=>{
+    const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.ins){ta.focus();let s=b.dataset.ins;if(ta.selectionStart===0||ta.value[ta.selectionStart-1]==='\n')s=s.replace(/^\n/,'');ta.setRangeText(s,ta.selectionStart,ta.selectionEnd,'end');ta.oninput()}
+    else if(b.id==='exp')download((d.name||'appunti').replace(/[\\/:*?"<>|]/g,'-')+'.md',d.md,'text/markdown');
+    else if(b.id==='del'){if(confirm(`Eliminare «${d.name}» e i relativi progressi? L'operazione non si può annullare.`)){S.decks=S.decks.filter(x=>x!==d);delete S.progress[d.id];S.deleted[d.id]=Date.now();dirty=true;if(d.src)S.ignore[d.src]=d.srcHash;S.current=S.decks[0]?S.decks[0].id:null;save();render()}}
+  };
+}
+
+/* ---------- SCHEMA A STELLA ---------- */
+const COLORS=['#2f6fde','#d9482b','#1f9d63','#b8860b','#8e44ad','#0e8f9c','#c2185b','#5d6d7e'];
+const FONT=['700 17px','600 15px','400 14px'],LH=[23,21,19],MAXW=[220,190,230];
+const FAM=' system-ui,-apple-system,"Segoe UI",sans-serif';
+const ctx=document.createElement('canvas').getContext('2d');
+let ui={key:null,collapsed:new Set(),covered:new Set()},view={x:0,y:0,k:1},needFit=true,recall=null;
+const visitAll=(n,f)=>{f(n);n.children.forEach(c=>visitAll(c,f))};
+let ORD={},tmpMove=null; // ORD: ordine scelto a mano tra fratelli; tmpMove: nodo che si sta trascinando
+const rank=(c,i)=>ORD[c.key]!=null?ORD[c.key]:i;
+const kids=n=>ui.collapsed.has(n.id)?[]:n.children.map((c,i)=>[c,rank(c,i)]).sort((a,b)=>a[1]-b[1]).map(x=>x[0]);
+const visit=(n,f)=>{f(n);kids(n).forEach(c=>visit(c,f))};
+const IMGRE=/!\[([^\]]*)\]\(([^)]+?)\)/,imgInfo={};
+function imgSize(url){ // dimensioni reali dell'immagine: finché non è caricata si assume 4:3, poi lo schema si ridisegna
+  let i=imgInfo[url];
+  if(!i){i=imgInfo[url]={w:4,h:3};const im=new Image();im.onload=()=>{i.w=im.naturalWidth;i.h=im.naturalHeight;if(S.tab==='schema'&&cur()&&!recall&&$('#svg')){needFit=true;drawSchema(cur())}};im.src=url}
+  return i;
+}
+function measure(n){
+  const i=Math.min(n.depth,2);ctx.font=FONT[i]+FAM;
+  const im=n.text.match(IMGRE),txt=plain(n.text.replace(new RegExp(IMGRE.source,'g'),' ')).trim();
+  n.img=null;
+  if(im){const url=encodeURI(imgUrl(im[2].trim())),z=imgSize(url),k=Math.min(Math.min(MAXW[i],190)/z.w,125/z.h);n.img={url,w:Math.round(z.w*k),h:Math.round(z.h*k)}}
+  const words=(txt||!im?(n.isAnswer?'→ ':'')+txt:'').split(/\s+/).filter(Boolean),lines=[];let line='';
+  words.forEach(w=>{const t=line?line+' '+w:w;if(line&&ctx.measureText(t).width>MAXW[i]){lines.push(line);line=w}else line=t});
+  if(line)lines.push(line);
+  n.lines=lines.length||n.img?lines:[''];n.lh=LH[i];n.boxed=n.depth<2;
+  const tw=Math.ceil(Math.max(30,n.img?n.img.w:0,...n.lines.map(l=>ctx.measureText(l).width)));
+  n.pad=n.boxed?13:5;n.w=tw+n.pad*2;n.ty=(n.boxed?8:3)+(n.img?n.img.h+(n.lines.length?6:2):0);n.h=n.ty+n.lines.length*n.lh+(n.boxed?8:5);
+}
+function layout(root,d){
+  ORD=d.ord||{};
+  const HGAP=44,gapFor=c=>c.depth===1?26:9;
+  (function m(n){measure(n);const ks=kids(n);ks.forEach(m);n.sh=Math.max(n.h,ks.reduce((s,c)=>s+c.sh+gapFor(c),ks.length?-gapFor(ks[0]):0))})(root);
+  function place(n,list,dir){
+    if(!list.length)return;const g=gapFor(list[0]);
+    const total=list.reduce((s,c)=>s+c.sh+g,-g);let y=n.y+n.h/2-total/2;
+    list.forEach(c=>{c.dir=dir;c.x=dir>0?n.x+n.w+HGAP:n.x-HGAP-c.w;c.y=y+c.sh/2-c.h/2;y+=c.sh+g;place(c,kids(c),dir)});
+  }
+  root.x=-root.w/2;root.y=-root.h/2;root.dir=0;
+  const ks=kids(root);
+  if((d.layout||'star')==='tree')place(root,ks,1);
+  else{ // distribuzione automatica: il taglio che bilancia meglio le due metà, rispettando i rami spostati a mano
+    const side=d.side||{},R=[],L=[],auto=[];
+    ks.forEach(c=>{const s=side[c.key];(s==='R'?R:s==='L'?L:auto).push(c)});
+    const sum=a=>a.reduce((s,c)=>s+c.sh+26,0);let best=0,bd=Infinity;
+    for(let k=0;k<=auto.length;k++){const diff=Math.abs(sum(R)+sum(auto.slice(0,k))-sum(L)-sum(auto.slice(k)));if(diff<=bd){bd=diff;best=k}}
+    const ord=(a,b)=>ks.indexOf(a)-ks.indexOf(b);
+    place(root,R.concat(auto.slice(0,best)).sort(ord),1);
+    place(root,L.concat(auto.slice(best)).sort(ord),-1);
+  }
+  const pos=d.pos||{}; // ritocchi manuali: spostano un ramo principale con tutto il suo contenuto
+  (function shift(n,ox,oy){const p=tmpMove&&tmpMove.key===n.key?tmpMove:n.depth===1?pos[n.key]:null;if(p){ox+=p.dx;oy+=p.dy}n.x+=ox;n.y+=oy;kids(n).forEach(c=>shift(c,ox,oy))})(root,0,0);
+}
+function drawSchema(d){
+  const root=model(d).root,svg=$('#svg');if(!svg)return;
+  layout(root,d);
+  let links='',nodes='';const bb={x0:1e9,y0:1e9,x1:-1e9,y1:-1e9};
+  visit(root,n=>{
+    bb.x0=Math.min(bb.x0,n.x);bb.y0=Math.min(bb.y0,n.y);bb.x1=Math.max(bb.x1,n.x+n.w);bb.y1=Math.max(bb.y1,n.y+n.h);
+    const col=n.depth?COLORS[n.branch%COLORS.length]:'var(--accent)';
+    kids(n).forEach(c=>{
+      const right=c.x+c.w/2>n.x+n.w/2;
+      const px=right?n.x+n.w:n.x,py=n.boxed?n.y+n.h/2:n.y+n.h,cx=right?c.x:c.x+c.w,cy=c.boxed?c.y+c.h/2:c.y+c.h,mx=(px+cx)/2;
+      links+=`<path class="link" style="--c:${COLORS[c.branch%COLORS.length]}" d="M${px} ${py}C${mx} ${py} ${mx} ${cy} ${cx} ${cy}"/>`;
+    });
+    const cov=ui.covered.has(n.id);
+    const text=cov?`<text x="${n.w/2}" y="${n.h/2+5}" text-anchor="middle">?</text>`
+      :(n.img?`<image href="${esc(n.img.url)}" x="${n.boxed?(n.w-n.img.w)/2:n.pad}" y="${n.boxed?8:3}" width="${n.img.w}" height="${n.img.h}"/>`:'')+`<text y="${n.ty+n.lh*0.74}">${n.lines.map((l,i)=>`<tspan x="${n.pad}" dy="${i?n.lh:0}">${esc(l)}</tspan>`).join('')}</text>`;
+    let badge='';
+    if(ui.collapsed.has(n.id)&&n.children.length){const bx=n.dir<0?-14:n.w+14;badge=`<g class="badge" transform="translate(${bx} ${n.boxed?n.h/2:n.h-4})"><circle r="10"/><text text-anchor="middle" y="4">+${n.children.length}</text></g>`}
+    const shape=n.boxed?`<rect class="box hit" width="${n.w}" height="${n.h}" rx="${n.depth?10:n.h/2}"/>`
+      :`<rect class="hit" width="${n.w}" height="${n.h}" rx="6"/><path class="under" d="M0 ${n.h}H${n.w}"/>`;
+    nodes+=`<g class="node d${Math.min(n.depth,2)}${cov?' cov':''}${n.isAnswer?' ans':''}" data-id="${n.id}" style="--c:${col}" transform="translate(${n.x} ${n.y})">${shape}${text}${badge}</g>`;
+  });
+  svg.innerHTML=`<g id="vp">${links}${nodes}</g>`;
+  lastBB=bb;
+  if(needFit){fit(bb);needFit=false}
+  applyView();
+}
+let lastBB=null;
+function loadImages(){return new Promise(r=>{if(window.STUDIOMD_IMAGES||!DISK)return r();const s=document.createElement('script');s.src='flashcards/immagini.js';s.onload=s.onerror=()=>r();document.head.appendChild(s)})}
+async function exportPNG(d){ // esporta lo schema così come si vede (anche coperto: utile come esercizio da stampare), sempre a colori chiari
+  if(!lastBB)return;await loadImages();
+  const IM=window.STUDIOMD_IMAGES||{},bb=lastBB,pad=30,W=Math.ceil(bb.x1-bb.x0+pad*2),H=Math.ceil(bb.y1-bb.y0+pad*2),k=Math.min(2,8000/Math.max(W,H));
+  const g=$('#vp').cloneNode(true);g.removeAttribute('transform');let missing=0;
+  g.querySelectorAll('image').forEach(im=>{const u=im.getAttribute('href');if(/^data:/.test(u))return;const data=IMGD[u]||IM[decodeURI(u)];if(data)im.setAttribute('href',data);else{missing++;im.remove()}});
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W*k}" height="${H*k}" viewBox="${bb.x0-pad} ${bb.y0-pad} ${W} ${H}"><style>svg{--panel:#fff;--ink:#1f2328;--muted:#6b7280;--accent:#2f5bd8;--accent-ink:#fff}${$('#schemacss').textContent}</style><rect x="${bb.x0-pad}" y="${bb.y0-pad}" width="${W}" height="${H}" fill="#fff"/>${new XMLSerializer().serializeToString(g)}</svg>`;
+  const name=(d.name||'schema').replace(/[\\/:*?"<>|]/g,'-'),img=new Image();
+  const asSvg=()=>{download(name+'.svg',svg,'image/svg+xml');alert('Questo browser non permette di creare il PNG: ho scaricato lo schema in formato SVG (si apre nel browser e si può stampare).')};
+  img.onload=()=>{try{const c=document.createElement('canvas');c.width=W*k;c.height=H*k;c.getContext('2d').drawImage(img,0,0);
+    c.toBlob(b=>{if(!b)return asSvg();const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+      if(missing)alert(missing+' immagini non sono entrate nel PNG. Esegui «python3 flashcards/aggiorna_indice.py» e riprova.')},'image/png')}catch(e){asSvg()}};
+  img.onerror=asSvg;img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+function fit(bb){
+  const svg=$('#svg'),W=svg.clientWidth||800,H=svg.clientHeight||600,bw=bb.x1-bb.x0+70,bh=bb.y1-bb.y0+70;
+  view.k=Math.min(W/bw,H/bh,1.2);view.x=W/2-(bb.x0+bb.x1)/2*view.k;view.y=H/2-(bb.y0+bb.y1)/2*view.k;
+}
+const applyView=()=>{const g=$('#vp');if(g)g.setAttribute('transform',`translate(${view.x} ${view.y}) scale(${view.k})`)};
+function zoomAt(f,px,py){const k=Math.min(3,Math.max(.15,view.k*f));f=k/view.k;view.x=px-(px-view.x)*f;view.y=py-(py-view.y)*f;view.k=k;applyView()}
+function setLevels(root,lv){ui.collapsed=new Set();if(lv!=='all')visitAll(root,n=>{if(n.depth>=+lv&&n.children.length)ui.collapsed.add(n.id)})}
+function renderSchema(v,d){
+  const root=model(d).root;let total=0;const byId={};visitAll(root,n=>{total++;byId[n.id]=n});
+  const levels=()=>d.levels||(total>45?'2':'all');
+  if(ui.key!==d.id+d.md){ui={key:d.id+d.md,collapsed:new Set(),covered:new Set()};setLevels(root,levels());needFit=true}
+  v.innerHTML=`<div class="swrap"><div class="toolbar">
+    <select id="lay" aria-label="Disposizione"><option value="star">Stella (due lati)</option><option value="tree">Albero (a destra)</option></select>
+    <select id="lev" aria-label="Livelli visibili" title="Quanti livelli mostrare: meno livelli, schema più pulito"><option value="1">Solo i rami</option><option value="2">2 livelli</option><option value="3">3 livelli</option><option value="all">Tutti i livelli</option></select>
+    <button id="cover" title="Nasconde il testo dei nodi: prova a ricordarli, poi clicca per verificare">Copri tutto</button>
+    <button id="uncover">Scopri tutto</button>
+    <button id="rec" title="Scrivi a memoria tutto ciò che ricordi e confrontalo con lo schema">Richiamo libero</button>
+    <span class="sp"></span>
+    <button id="redo" title="Annulla gli spostamenti manuali e ridistribuisce i rami in automatico">Ridistribuisci</button>
+    <button id="zo" aria-label="Riduci">−</button><button id="zi" aria-label="Ingrandisci">+</button><button id="fit">Adatta</button><button id="prt">Stampa</button><button id="png" title="Scarica lo schema come immagine, così come lo vedi ora">PNG</button>
+  </div><div id="schema"><svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg></div></div>`;
+  $('#lay').value=d.layout||'star';$('#lev').value=levels();
+  const redraw=f=>{if(f)needFit=true;drawSchema(d)};
+  $('#lay').onchange=e=>{d.layout=e.target.value;save();redraw(true)};
+  $('#lev').onchange=e=>{d.levels=e.target.value;save();setLevels(root,d.levels);redraw(true)};
+  $('#cover').onclick=()=>{visitAll(root,n=>{if(n.depth>0)ui.covered.add(n.id)});redraw()};
+  $('#uncover').onclick=()=>{ui.covered.clear();redraw()};
+  $('#rec').onclick=()=>{recall={branch:'',text:'',res:null};render()};
+  $('#redo').onclick=()=>{d.pos={};d.side={};d.ord={};save();redraw(true)};
+  $('#fit').onclick=()=>redraw(true);
+  $('#prt').onclick=()=>print();
+  $('#png').onclick=()=>exportPNG(d);
+  const svg=$('#svg'),mid=()=>[svg.clientWidth/2,svg.clientHeight/2];
+  $('#zi').onclick=()=>zoomAt(1.25,...mid());$('#zo').onclick=()=>zoomAt(.8,...mid());
+  svg.addEventListener('wheel',e=>{e.preventDefault();const r=svg.getBoundingClientRect();zoomAt(Math.exp(-e.deltaY*(e.ctrlKey?.01:.0015)),e.clientX-r.left,e.clientY-r.top)},{passive:false});
+  // puntatore: clic su un nodo = scopri/apri/chiudi; trascina un nodo = sposta il ramo; trascina lo sfondo = sposta la vista
+  const pts=new Map();let moved=false,pinch=0,down=null,raf=0;
+  svg.onpointerdown=e=>{
+    svg.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);svg.classList.add('drag');
+    if(pts.size!==1){down=null;return}
+    moved=false;const g=e.target.closest&&e.target.closest('.node'),n=g&&byId[+g.dataset.id];
+    const p=n&&(d.pos||{})[n.key]||{dx:0,dy:0};tmpMove=null;
+    down={n,x:e.clientX,y:e.clientY,dx:p.dx,dy:p.dy};
+  };
+  svg.onpointermove=e=>{
+    const p=pts.get(e.pointerId);if(!p)return;
+    if(pts.size===1&&down){
+      if(!moved&&Math.hypot(e.clientX-down.x,e.clientY-down.y)<5)return;moved=true;
+      if(down.n&&down.n.depth>0){
+        const mv={key:down.n.key,dx:(e.clientX-down.x)/view.k,dy:(e.clientY-down.y)/view.k};
+        if(down.n.depth===1)(d.pos||(d.pos={}))[mv.key]={dx:down.dx+mv.dx,dy:down.dy+mv.dy};else tmpMove=mv;
+        if(!raf)raf=requestAnimationFrame(()=>{raf=0;drawSchema(d)});
+      }else{view.x+=e.clientX-p[0];view.y+=e.clientY-p[1];applyView()}
+      pts.set(e.pointerId,[e.clientX,e.clientY]);
+    }else if(pts.size===2){
+      pts.set(e.pointerId,[e.clientX,e.clientY]);const [a,b]=[...pts.values()],dist=Math.hypot(a[0]-b[0],a[1]-b[1]),r=svg.getBoundingClientRect();
+      if(pinch)zoomAt(dist/pinch,(a[0]+b[0])/2-r.left,(a[1]+b[1])/2-r.top);pinch=dist;moved=true;
+    }
+  };
+  const up=e=>{
+    if(!pts.has(e.pointerId))return;pts.delete(e.pointerId);pinch=0;if(!pts.size)svg.classList.remove('drag');
+    const n=down&&down.n;down=null;
+    if(!n||e.type==='pointercancel')return;
+    if(moved){ // un ramo principale trascinato oltre il centro passa sull'altro lato; gli altri nodi si riordinano tra fratelli
+      if(n.depth>1){
+        const sib=kids(n.parent).filter(x=>x!==n),cy=n.y+n.h/2,at=sib.filter(x=>x.y+x.h/2<cy).length;
+        sib.splice(at,0,n);d.ord=d.ord||{};sib.forEach((x,i)=>d.ord[x.key]=i);tmpMove=null;
+      }
+      if(n.depth===1&&(d.layout||'star')==='star'){const want=n.x+n.w/2>0?'R':'L';if(want!==(n.dir>0?'R':'L')){(d.side||(d.side={}))[n.key]=want;delete d.pos[n.key]}}
+      save();drawSchema(d);return;
+    }
+    if(ui.covered.has(n.id))ui.covered.delete(n.id);
+    else if(n.children.length)ui.collapsed.has(n.id)?ui.collapsed.delete(n.id):ui.collapsed.add(n.id);
+    else return;
+    drawSchema(d);
+  };
+  svg.onpointerup=up;svg.onpointercancel=up;
+  drawSchema(d);
+}
+addEventListener('resize',()=>{if(S.tab==='schema'&&cur()&&!recall){needFit=true;drawSchema(cur())}});
+
+/* ---------- RICHIAMO LIBERO ---------- */
+const norm=s=>plain(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+const stems=s=>{const w=norm(s).match(/[a-z0-9]{4,}/g)||norm(s).match(/[a-z0-9]{2,}/g)||[];return w.map(x=>x.slice(0,5))};
+function renderRecall(v,d){
+  const root=model(d).root,r=recall;
+  const target=r.branch===''?root:root.children[+r.branch]||root;
+  v.innerHTML=`<div class="wrap recall">
+    <div class="row" style="margin-top:8px"><button id="rback" class="ghost">← Torna allo schema</button></div>
+    <h2 style="margin:0 0 4px">Richiamo libero</h2>
+    <p class="hint" style="margin-top:0">Senza guardare gli appunti, scrivi tutto ciò che ricordi. Poi confronta: è la tecnica di ripasso più efficace, perché costringe la memoria a recuperare invece che a riconoscere.</p>
+    <div class="row"><select id="rbranch"><option value="">Tutto: ${esc(plain(root.text))}</option>${root.children.map((c,i)=>`<option value="${i}" ${r.branch===String(i)?'selected':''}>${esc(plain(c.text))}</option>`).join('')}</select>
+    <button class="primary" id="rcheck">Confronta con gli appunti</button></div>
+    <div style="height:220px"><textarea id="rtext" placeholder="Scrivi qui a memoria: parole chiave, date, definizioni…"></textarea></div>
+    <div id="rres"></div></div>`;
+  $('#rtext').value=r.text;$('#rtext').oninput=e=>r.text=e.target.value;
+  $('#rback').onclick=()=>{recall=null;needFit=true;render()};
+  $('#rbranch').onchange=e=>{r.branch=e.target.value;r.res=null;renderRecall(v,d)};
+  $('#rcheck').onclick=()=>{
+    const mine=new Set(stems(r.text));r.res=[];
+    visitAll(target,n=>{if(n===target||n.isAnswer)return;const cz=n.cloze&&n.text.match(/\{\{.+?\}\}/g),src=n.qa?n.answer:cz?cz.join(' '):n.text,st=[...new Set(stems(src))],hit=st.filter(x=>mine.has(x)).length;
+      r.res.push({text:n.qa?n.text+' → '+n.answer:n.text,ind:n.depth-target.depth-1,ok:st.length>0&&(hit/st.length>=.5||(hit>=2&&hit/st.length>=.34))})});
+    showRes();
+  };
+  const showRes=()=>{
+    if(!r.res)return;const ok=r.res.filter(x=>x.ok).length;
+    $('#rres').innerHTML=`<div class="score">${ok} su ${r.res.length} punti ricordati (${Math.round(ok/Math.max(1,r.res.length)*100)}%)</div>
+      <p class="hint">Il confronto automatico cerca le parole chiave: correggi a mano le spunte se hai espresso il concetto con parole tue. I punti in rosso sono quelli da riguardare.</p>
+      ${r.res.map((x,i)=>`<label class="rc ${x.ok?'ok':'no'}" style="margin-left:${x.ind*18}px"><input type="checkbox" data-i="${i}" ${x.ok?'checked':''}><span>${inline(x.text)}</span></label>`).join('')}`;
+    $('#rres').onchange=e=>{const i=e.target.dataset.i;if(i==null)return;r.res[+i].ok=e.target.checked;showRes()};
+  };
+  showRes();
+}
+
+/* ---------- FLASHCARD ---------- */
+let session=null,fcFilter='';
+function startSession(cards,mixed){session={mixed,queue:shuffle(cards.slice()),i:0,flipped:false,total:cards.length,ok:0,again:0}}
+function renderFlash(v,d){
+  const m=model(d),c=counts(d),pl=plan(d);
+  const branches=[...new Set(m.cards.map(x=>x.branch).filter(Boolean))],leeches=m.cards.filter(x=>isLeech(d,x));
+  if(fcFilter==='__leech'?!leeches.length:fcFilter&&!branches.includes(fcFilter))fcFilter='';
+  const list=m.cards.filter(x=>!fcFilter||(fcFilter==='__leech'?isLeech(d,x):x.branch===fcFilter));
+  const dueN=list.filter(x=>isDue(d,x)).length,iso=new Date(today()*864e5).toISOString().slice(0,10);
+  const todays=pl?pl.rev.concat(pl.todayNew):[];
+  let examTxt='<span class="hint">Imposta la data: l\'app distribuisce le carte nuove sui giorni che restano e fa tornare ogni carta prima della verifica.</span>';
+  if(pl){
+    if(pl.left<0)examTxt='<span class="hint">Verifica passata.</span><button id="examOff">Togli la data</button>';
+    else examTxt=`<b>${pl.left===0?'La verifica è oggi: ultimo ripasso veloce!':pl.left===1?'La verifica è domani':'Mancano '+pl.left+' giorni'}</b><span class="hint">preparazione ${pl.ready}%</span><div class="progress"><i style="width:${pl.ready}%"></i></div>
+      ${todays.length?`<button class="primary" id="goPlan">Piano di oggi: ${pl.rev.length} ripassi + ${pl.todayNew.length} nuove</button>`:'<span class="hint">Per oggi hai finito ✓</span>'}`;
+  }
+  v.innerHTML=`<div class="wrap">
+    <div class="stats">
+      <div class="stat"><b>${c.total}</b><small>flashcard totali</small></div>
+      <div class="stat"><b style="color:var(--mid)">${c.due}</b><small>da ripassare oggi</small></div>
+      <div class="stat"><b>${c.fresh}</b><small>mai viste</small></div>
+      <div class="stat"><b style="color:var(--good)">${c.learned}</b><small>consolidate</small></div>
+    </div>
+    <div class="exam"><label>📅 Verifica il <input type="date" id="exam" value="${d.exam||''}" min="${iso}"></label>${examTxt}</div>
+    <div class="row">
+      <button class="${pl&&pl.left>=0?'':'primary'}" id="goDue" ${dueN?'':'disabled'}>Ripassa le ${dueN} in scadenza</button>
+      <button id="goAll" ${list.length?'':'disabled'}>Ripassa tutte (${list.length})</button>
+      <button id="goWalk" ${list.length?'':'disabled'} title="Schermo intero, pulsanti enormi, lettura ad alta voce">🚶 Cammina</button>
+      <select id="flt" aria-label="Filtra le carte"><option value="">Tutti i rami</option>${branches.map(b=>`<option ${b===fcFilter?'selected':''}>${esc(b)}</option>`).join('')}${leeches.length?`<option value="__leech" ${fcFilter==='__leech'?'selected':''}>⚠ Solo le carte ostiche (${leeches.length})</option>`:''}</select>
+      <span style="flex:1"></span>
+      <label class="chk"><input type="checkbox" id="auto" ${d.auto!==false?'checked':''}> Genera flashcard anche dallo schema</label>
+    </div>
+    ${leeches.length?`<div class="notice">⚠ <b>${leeches.length} ${leeches.length===1?'carta ostica':'carte ostiche'}</b>: ${leeches.length===1?'sbagliata':'sbagliate'} almeno ${LEECH} volte. Di solito la carta è troppo lunga o ambigua: riscrivila più semplice, dividila in due o aggiungi un'immagine.</div>`:''}
+    <div class="cardlist">${list.map(x=>{const p=prog(d,x),b=p?p.box:0;return `<details><summary><span class="q">${esc(x.q)}</span>${isLeech(d,x)?'<span class="kind leech">ostica</span>':''}<span class="kind">${x.kind}</span><span class="lv" title="Livello ${b} di 5">${[1,2,3,4,5].map(i=>`<i class="${i<=b?'f':''}"></i>`).join('')}</span></summary><div class="a">${x.a}</div></details>`}).join('')||'<p class="hint">Nessuna flashcard. Nel testo scrivi <code>Domanda? :: Risposta</code>, <code>- **Termine**: definizione</code> o <code>{{parola da completare}}</code>, oppure attiva la generazione dallo schema.</p>'}</div>
+    ${c.total?'<p style="margin-top:18px"><button id="reset" class="danger">Azzera i progressi di questi appunti</button></p>':''}
+  </div>`;
+  const start=cards=>{startSession(cards.map(x=>({...x,deck:d})),false);render()};
+  $('#goDue').onclick=()=>start(list.filter(x=>isDue(d,x)));
+  $('#goAll').onclick=()=>start(list);
+  $('#goWalk').onclick=()=>{const due=list.filter(x=>isDue(d,x));startWalk((due.length?due:list).map(x=>({...x,deck:d})),false)};
+  if($('#goPlan'))$('#goPlan').onclick=()=>start(todays);
+  if($('#examOff'))$('#examOff').onclick=()=>{delete d.exam;save();render()};
+  $('#exam').onchange=e=>{if(e.target.value)d.exam=e.target.value;else delete d.exam;save();render()};
+  $('#flt').onchange=e=>{fcFilter=e.target.value;renderFlash(v,d)};
+  $('#auto').onchange=e=>{d.auto=e.target.checked;save();render()};
+  if($('#reset'))$('#reset').onclick=()=>{if(confirm('Azzerare tutti i progressi di studio di questi appunti?')){S.progress[d.id]={};S.resets[d.id]=Date.now();dirty=true;save();render()}};
+}
+function renderSession(v){
+  const s=session;if(s.walk)return renderWalk(v);
+  if(s.i>=s.queue.length){
+    v.innerHTML=`<div class="wrap done"><h2>Ripasso completato 🎉</h2><p class="hint">${s.total} flashcard · ${s.again} riproposte perché non le sapevi</p><p><button class="primary" id="back">Torna all'elenco</button></p></div>`;
+    $('#back').onclick=()=>{session=null;render()};renderSide();return;
+  }
+  const c=s.queue[s.i];model(c.deck);
+  v.innerHTML=`<div class="wrap">
+    <div class="row" style="margin-bottom:6px"><button id="quit" class="ghost">← Esci</button><span style="flex:1"></span><span class="hint">${s.ok} / ${s.total}</span></div>
+    <div class="progress"><i style="width:${s.ok/s.total*100}%"></i></div>
+    <div class="flash" id="card" tabindex="0">
+      <div class="ctx">${esc([s.mixed&&c.deck.name,c.ctx].filter(Boolean).join(' · '))}</div>
+      <div class="q">${c.qh}</div>
+      ${s.flipped?`<div class="a">${c.a}</div>`:'<div class="tap">Rispondi a mente (o ad alta voce), poi clicca o premi Spazio per girare</div>'}
+    </div>
+    ${s.flipped&&isLeech(c.deck,c)?'<p class="hint" style="text-align:center;margin:12px 0 0">⚠ Carta ostica: l\'hai sbagliata più volte. Valuta di riscriverla più semplice.</p>':''}
+    ${s.flipped?`<div class="grades">
+      <button class="g0" data-g="0">Non la sapevo<small>tasto 1 · ritorna subito</small></button>
+      <button class="g1" data-g="1">Incerta<small>tasto 2 · domani</small></button>
+      <button class="g2" data-g="2">La sapevo<small>tasto 3 · più avanti</small></button></div>`:''}
+  </div>`;
+  $('#card').onclick=()=>{if(!s.flipped){s.flipped=true;renderSession(v)}};
+  $('#quit').onclick=()=>{session=null;render()};
+  v.querySelectorAll('.grades button').forEach(b=>b.onclick=()=>answer(+b.dataset.g));
+}
+function answer(g){
+  const s=session;if(!s||!s.flipped)return;
+  const c=s.queue[s.i];grade(c.deck,c,g);
+  if(g===0){s.queue.push(c);s.again++}else s.ok++;
+  if(s.walk&&navigator.vibrate)navigator.vibrate(g===2?30:[30,60,30]);
+  s.i++;s.flipped=false;renderSide();renderSession($('#view'));
+}
+addEventListener('keydown',e=>{
+  if(S.tab!=='flash'||!session||session.i>=session.queue.length||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+  if(e.key===' '||e.key==='Enter'){e.preventDefault();if(!session.flipped){session.flipped=true;renderSession($('#view'))}}
+  else if(session.flipped&&'123'.includes(e.key))answer(+e.key-1);
+});
+
+/* ---------- CAMMINA: ripasso a schermo intero, pulsanti enormi, voce ---------- */
+let walk={voice:true,auto:false},walkT=0,wakeLock=null;
+try{Object.assign(walk,JSON.parse(localStorage.getItem('studiomd-walk'))||{})}catch(e){}
+const walkSave=()=>{try{localStorage.setItem('studiomd-walk',JSON.stringify(walk))}catch(e){}};
+const toSpeech=html=>{const t=document.createElement('div');t.innerHTML=html.replace(/<img[^>]*>/g,' ').replace(/<\/li>/g,'. ');return t.textContent.replace(/\[ … \]/g,' puntini ').replace(/[→«»]/g,' ').replace(/\s+/g,' ').trim()};
+function say(text,then,pause){ // legge il testo; «then» (solo mani libere) parte dopo la pausa
+  clearTimeout(walkT);const after=()=>{if(then)walkT=setTimeout(then,pause)};
+  if(!walk.voice||!window.speechSynthesis){if(then)walkT=setTimeout(then,Math.min(10000,2500+text.length*65));return}
+  speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='it-IT';u.rate=.95;
+  const v=speechSynthesis.getVoices().find(x=>/^it/i.test(x.lang));if(v)u.voice=v;
+  let done=false;u.onend=u.onerror=()=>{if(!done){done=true;after()}};speechSynthesis.speak(u);
+}
+function startWalk(cards,mixed){
+  startSession(cards,mixed);session.walk=true;S.tab='flash';
+  if(navigator.wakeLock)navigator.wakeLock.request('screen').then(l=>wakeLock=l).catch(()=>{}); // schermo sempre acceso
+  render();
+}
+function stopWalk(){clearTimeout(walkT);if(window.speechSynthesis)speechSynthesis.cancel();if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}session=null;render()}
+function renderWalk(v){
+  const s=session;clearTimeout(walkT);
+  if(s.i>=s.queue.length){
+    v.innerHTML=`<div class="walk"><div class="wdone"><h2>Ripasso completato 🎉</h2><p class="hint">${s.total} carte${s.again?` · ${s.again} riproposte`:''}</p><button class="primary wbig" id="wexit">Fine</button></div></div>`;
+    $('#wexit').onclick=stopWalk;say('Ripasso completato. Ottimo lavoro!');renderSide();return;
+  }
+  const c=s.queue[s.i];model(c.deck);
+  v.innerHTML=`<div class="walk" id="walk">
+    <div class="wtop"><button id="wexit" aria-label="Esci">✕</button><span>${s.i+1} / ${s.queue.length}</span><span style="flex:1"></span>
+      <button id="wvoice" class="${walk.voice?'on':''}">${walk.voice?'🔊':'🔇'} Voce</button>
+      <button id="wauto" class="${walk.auto?'on':''}" title="Ascolta domande e risposte senza toccare lo schermo">${walk.auto?'⏸':'▶'} Mani libere</button></div>
+    <div class="wcard" id="wcard"><div class="ctx">${esc([s.mixed&&c.deck.name,c.ctx].filter(Boolean).join(' · '))}</div><div class="wq">${c.qh}</div>${s.flipped?`<div class="wa">${c.a}</div>`:''}</div>
+    ${walk.auto?'<div class="whint">Mani libere: ascolti domanda e risposta, le carte non vengono valutate. Tocca ⏸ per tornare ai pulsanti.</div>'
+      :s.flipped?`<div class="wgrades"><button class="g0" data-g="0">✗<small>Non la sapevo</small></button><button class="g1" data-g="1">~<small>Incerta</small></button><button class="g2" data-g="2">✓<small>La sapevo</small></button></div><div class="whint">Oppure scorri: ← non la sapevo · ↑ incerta · → la sapevo</div>`
+      :'<button class="wshow" id="wshow">Mostra la risposta</button><div class="whint">Tocca un punto qualsiasi della carta · occhio alla strada 👀</div>'}
+  </div>`;
+  const flip=()=>{if(!s.flipped&&!walk.auto){s.flipped=true;renderWalk(v)}};
+  $('#wexit').onclick=stopWalk;$('#wcard').onclick=flip;if($('#wshow'))$('#wshow').onclick=flip;
+  $('#wvoice').onclick=()=>{walk.voice=!walk.voice;walkSave();if(!walk.voice&&window.speechSynthesis)speechSynthesis.cancel();renderWalk(v)};
+  $('#wauto').onclick=()=>{walk.auto=!walk.auto;walkSave();s.flipped=false;renderWalk(v)};
+  v.querySelectorAll('.wgrades button').forEach(b=>b.onclick=()=>answer(+b.dataset.g));
+  let t0=null;const w=$('#walk'); // gesti: si può valutare senza guardare lo schermo
+  w.ontouchstart=e=>{t0=e.touches[0]};
+  w.ontouchend=e=>{if(!t0||walk.auto)return;const t=e.changedTouches[0],dx=t.clientX-t0.clientX,dy=t.clientY-t0.clientY;t0=null;
+    if(Math.max(Math.abs(dx),Math.abs(dy))<70)return;e.preventDefault();
+    if(!s.flipped)return flip();
+    if(Math.abs(dx)>Math.abs(dy))answer(dx<0?0:2);else if(dy<0)answer(1)};
+  const text=toSpeech(s.flipped?c.a:c.qh);
+  if(walk.auto)say(text,()=>{if(session!==s)return;if(s.flipped){s.i++;s.flipped=false}else s.flipped=true;renderWalk(v)},s.flipped?2500:4000);
+  else say(text);
+}
+
+/* ---------- CLOUD: sincronizzazione con Supabase (facoltativa, configurata in config.js) ---------- */
+const CFG={...(window.STUDIOMD_CONFIG||{})};
+try{CFG.url=new URL(String(CFG.url||'').trim()).origin}catch(e){CFG.url=''} // tiene solo https://xxxx.supabase.co, anche se è stato incollato con /rest/v1/
+CFG.key=String(CFG.key||'').trim();
+const cloudOn=()=>/^https:\/\//.test(CFG.url||'')&&(CFG.key||'').length>20;
+let cloud={busy:false,err:'',last:0},AUTH=null,cloudT=0;
+try{AUTH=JSON.parse(localStorage.getItem('studiomd-auth'))}catch(e){}
+const setAuth=a=>{AUTH=a;try{a?localStorage.setItem('studiomd-auth',JSON.stringify(a)):localStorage.removeItem('studiomd-auth')}catch(e){}};
+function cloudSoon(){if(!cloudOn()||!AUTH)return;clearTimeout(cloudT);cloudT=setTimeout(()=>{if(session&&session.i<session.queue.length)return cloudSoon();sync()},5000)}
+function cloudDraw(){
+  const b=$('#cloud');if(!b)return;
+  b.textContent=!cloudOn()?'☁ Sincronizzazione: non attiva':!AUTH?'☁ Accedi per sincronizzare':cloud.busy?'☁ Sincronizzo…':cloud.err?'☁ Errore di sincronizzazione':cloud.last?'☁ Sincronizzato alle '+new Date(cloud.last).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}):'☁ '+AUTH.email;
+}
+async function api(path,opt={}){
+  const r=await fetch(CFG.url+path,{method:opt.method||'GET',body:opt.body,headers:{apikey:CFG.key,'Content-Type':'application/json',...(AUTH&&!opt.noAuth?{Authorization:'Bearer '+AUTH.access_token}:{}),...(opt.headers||{})}});
+  const t=await r.text();let j=null;try{j=t?JSON.parse(t):null}catch(e){}
+  if(!r.ok){const e=new Error((j&&(j.msg||j.message||j.error_description||j.error))||('Errore '+r.status));e.status=r.status;throw e}
+  return j;
+}
+async function signIn(email,password,signup){
+  const j=await api(signup?'/auth/v1/signup':'/auth/v1/token?grant_type=password',{method:'POST',noAuth:true,body:JSON.stringify({email,password})});
+  if(!j||!j.access_token)throw new Error('Account creato. Se Supabase ti ha mandato una mail di conferma, aprila; poi premi «Accedi».');
+  setAuth({access_token:j.access_token,refresh_token:j.refresh_token,exp:Date.now()+j.expires_in*1000,uid:j.user.id,email:j.user.email});
+}
+async function freshToken(){
+  if(!AUTH)throw new Error('Accesso non effettuato');if(Date.now()<AUTH.exp-60000)return;
+  try{const j=await api('/auth/v1/token?grant_type=refresh_token',{method:'POST',noAuth:true,body:JSON.stringify({refresh_token:AUTH.refresh_token})});
+    setAuth({...AUTH,access_token:j.access_token,refresh_token:j.refresh_token,exp:Date.now()+j.expires_in*1000})}
+  catch(e){if(e.status>=400&&e.status<500){setAuth(null);throw new Error('Sessione scaduta: accedi di nuovo.')}throw e}
+}
+const upsert=(table,rows,conflict)=>rows.length?api(`/rest/v1/${table}?on_conflict=${conflict}`,{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(rows)}):null;
+async function sync(){ // unisce i dati dei dispositivi: per ogni appunto e per ogni carta vince la modifica più recente
+  if(!cloudOn()||!AUTH||cloud.busy)return;cloud.busy=true;cloud.err='';cloudDraw();let changed=false;
+  try{
+    await freshToken();clearTimeout(saveT);persist();const user_id=AUTH.uid;
+    // appunti
+    const R=await api('/rest/v1/studiomd_decks?select=id,data,t,deleted'),rmap={};
+    R.forEach(r=>{rmap[r.id]=r;const i=S.decks.findIndex(d=>d.id===r.id),l=S.decks[i];
+      if(r.deleted){if(l&&(l.t||0)<=r.t){S.decks.splice(i,1);delete snap[r.id];if(l.src)S.ignore[l.src]=l.srcHash;changed=true}return}
+      if((S.deleted[r.id]||0)>=r.t)return;
+      if(!l||r.t>(l.t||0)){const d={...r.data,t:r.t};if(l)S.decks[i]=d;else S.decks.push(d);snap[d.id]=deckJson(d);delete S.deleted[r.id];changed=true}});
+    const up=S.decks.filter(d=>!rmap[d.id]||(d.t||0)>rmap[d.id].t).map(d=>{const {t,...data}=d;return {user_id,id:d.id,data,t:d.t||1,deleted:false}});
+    Object.keys(S.deleted).forEach(id=>{const r=rmap[id];if(r&&!r.deleted&&S.deleted[id]>r.t&&!S.decks.some(d=>d.id===id))up.push({user_id,id,data:{},t:S.deleted[id],deleted:true})});
+    await upsert('studiomd_decks',up,'user_id,id');
+    // progressi, carta per carta
+    const PR=await api('/rest/v1/studiomd_progress?select=deck_id,data'),pmap={};PR.forEach(r=>pmap[r.deck_id]=r.data||{});
+    const pup=[];new Set([...Object.keys(S.progress),...Object.keys(pmap),...Object.keys(S.resets)]).forEach(id=>{
+      const L=S.progress[id]||{},Rm=pmap[id]||{},RC=Rm.cards||{},reset=Math.max(S.resets[id]||0,Rm.reset||0),M={};
+      let push=!pmap[id]&&Object.keys(L).length>0||(S.resets[id]||0)>(Rm.reset||0);
+      new Set([...Object.keys(L),...Object.keys(RC)]).forEach(k=>{const a=L[k],b=RC[k],w=!b||(a&&(a.t||0)>=(b.t||0))?a:b;
+        if(reset&&(w.t||0)<=reset){if(a)changed=true;return}
+        M[k]=w;if(w===a&&JSON.stringify(a)!==JSON.stringify(b))push=true;if(w===b&&JSON.stringify(a)!==JSON.stringify(b))changed=true});
+      S.progress[id]=M;if(reset)S.resets[id]=reset;if(push)pup.push({user_id,deck_id:id,data:{cards:M,reset},t:Date.now()})});
+    await upsert('studiomd_progress',pup,'user_id,deck_id');
+    // giorni di studio
+    const MR=await api('/rest/v1/studiomd_meta?select=data'),rd=(MR[0]&&MR[0].data&&MR[0].data.days)||{};let mpush=!MR[0];
+    Object.keys(rd).forEach(k=>{if((S.days[k]||0)<rd[k]){S.days[k]=rd[k];changed=true}});Object.keys(S.days).forEach(k=>{if((rd[k]||0)<S.days[k])mpush=true});
+    if(mpush)await upsert('studiomd_meta',[{user_id,data:{days:S.days},t:Date.now()}],'user_id');
+    dirty=false;cloud.last=Date.now();
+    if(!cur())S.current=S.decks[0]?S.decks[0].id:null;
+    try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+    await syncImages(false);
+  }catch(e){cloud.err=e.message||String(e);console.warn('Sincronizzazione non riuscita',e)}
+  cloud.busy=false;
+  if(changed&&!(session&&session.i<session.queue.length)&&!/INPUT|TEXTAREA/.test((document.activeElement||{}).tagName||''))render();else{cloudDraw();if(S.tab==='cloud')render()}
+}
+// immagini: il computer (che ha flashcards/immagini.js) le carica ridotte; gli altri dispositivi le scaricano e le conservano
+const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('studiomd',1);r.onupgradeneeded=()=>r.result.createObjectStore('img');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const idbPut=async(k,v)=>{const db=await idb();return new Promise(res=>{const tx=db.transaction('img','readwrite');tx.objectStore('img').put(v,k);tx.oncomplete=tx.onerror=()=>res()})};
+const idbAll=async()=>{const db=await idb();return new Promise(res=>{const out={},q=db.transaction('img').objectStore('img').openCursor();q.onsuccess=e=>{const c=e.target.result;if(c){out[c.key]=c.value;c.continue()}else res(out)};q.onerror=()=>res(out)})};
+const shrink=src=>new Promise((res,rej)=>{const im=new Image();im.onload=()=>{const k=Math.min(1,1200/Math.max(im.naturalWidth,im.naturalHeight)),c=document.createElement('canvas');c.width=Math.round(im.naturalWidth*k);c.height=Math.round(im.naturalHeight*k);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.82))};im.onerror=()=>rej(new Error('immagine non leggibile'));im.src=src});
+function neededImages(){const out=new Set();S.decks.forEach(d=>{const base=d.src?'flashcards/'+d.src.split('/').slice(0,-1).join('/')+'/':'';(d.md.match(/!\[[^\]]*\]\(([^)]+?)\)/g)||[]).forEach(m=>{const u=m.replace(/^.*\(/,'').replace(/\)$/,'').trim();if(!/^([a-z]+:|\/)/i.test(u))out.add(normPath(base+u))})});return [...out]}
+async function syncImages(force){
+  const need=neededImages();if(!need.length)return;
+  const R=await api('/rest/v1/studiomd_images?select=key,h'),rh={};R.forEach(r=>rh[r.key]=r.h);
+  if(DISK){
+    const todo=need.filter(k=>force||!rh[k]);if(!todo.length)return;
+    await loadImages();const IM=window.STUDIOMD_IMAGES||{};
+    for(const k of todo){if(!IM[k])continue;const h=hash(IM[k].length+IM[k].slice(-300));if(rh[k]===h)continue;
+      await upsert('studiomd_images',[{user_id:AUTH.uid,key:k,h,data:await shrink(IM[k]),t:Date.now()}],'user_id,key')}
+  }else{
+    let got=0;
+    for(const k of need){if(!rh[k]||IMGH[k]===rh[k])continue;
+      const r=await api('/rest/v1/studiomd_images?select=data,h&key=eq.'+encodeURIComponent(k));if(!r[0])continue;
+      setImg(k,r[0].data,r[0].h);await idbPut(k,{h:r[0].h,data:r[0].data});got++}
+    if(got){Object.keys(cache).forEach(k=>delete cache[k]);if(!session)render()}
+  }
+}
+function renderCloud(v){
+  const box=h=>{v.innerHTML=`<div class="wrap cloud guide"><h2>☁ Sincronizzazione tra dispositivi</h2>${h}</div>`};
+  if(!cloudOn())return box(`<p>Non è ancora attiva. Per studiare dagli stessi appunti su computer e telefono serve un progetto <b>Supabase</b> (gratuito): le istruzioni passo passo sono nel file <code>webapp/LEGGIMI.md</code>. In breve: crei il progetto, esegui <code>webapp/supabase.sql</code> e incolli indirizzo e chiave pubblica in <code>config.js</code>.</p><p class="hint">Finché non la attivi, l'app funziona come sempre e i dati restano in questo browser.</p>`);
+  if(!AUTH){
+    box(`<p>Accedi con lo stesso account su ogni dispositivo: appunti, progressi e immagini si allineano da soli.</p>
+      <label>Email<input type="email" id="cem" autocomplete="username"></label><label>Password<input type="password" id="cpw" autocomplete="current-password"></label>
+      <div class="row"><button class="primary" id="cin">Accedi</button><button id="cup">Crea account</button></div><p class="err" id="cerr"></p>`);
+    const go=signup=>async()=>{const em=$('#cem').value.trim(),pw=$('#cpw').value;if(!em||pw.length<6){$('#cerr').textContent='Inserisci email e una password di almeno 6 caratteri.';return}
+      $('#cerr').textContent='Un attimo…';try{await signIn(em,pw,signup);render();sync()}catch(e){$('#cerr').textContent=e.message}};
+    $('#cin').onclick=go(false);$('#cup').onclick=go(true);return;
+  }
+  box(`<p>Accesso effettuato come <b>${esc(AUTH.email||'')}</b>.</p>
+    <p class="${cloud.err?'err':'okmsg'}">${cloud.busy?'Sincronizzazione in corso…':cloud.err?'Errore: '+esc(cloud.err):cloud.last?'Tutto sincronizzato alle '+new Date(cloud.last).toLocaleTimeString('it-IT'):'In attesa della prima sincronizzazione.'}</p>
+    <div class="row"><button class="primary" id="cnow">Sincronizza ora</button>${DISK?'<button id="cimg" title="Ricarica nel cloud tutte le immagini delle carte, anche quelle già presenti">Ricarica le immagini nel cloud</button>':''}<button id="cout">Esci</button></div>
+    <p class="hint">La sincronizzazione parte da sola all'apertura, dopo ogni ripasso e quando torni sull'app. Se la stessa carta è stata ripassata su due dispositivi, vale il ripasso più recente. ${DISK?'Questo è il computer con la cartella flashcards: le nuove carte scritte nei file arrivano al telefono dopo che hai aperto l\'app qui.':'Le carte si scrivono sul computer (cartella flashcards): qui arrivano da sole.'}</p>`);
+  $('#cnow').onclick=()=>sync();$('#cout').onclick=()=>{setAuth(null);render()};
+  if($('#cimg'))$('#cimg').onclick=async()=>{cloud.busy=true;render();try{await freshToken();await syncImages(true);cloud.err=''}catch(e){cloud.err=e.message}cloud.busy=false;render()};
+}
+idbAll().then(o=>{let n=0;Object.keys(o).forEach(k=>{try{setImg(k,o[k].data,o[k].h);n++}catch(e){}});if(n&&!DISK){Object.keys(cache).forEach(k=>delete cache[k]);if(!session)render()}}).catch(()=>{});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(Date.now()-cloud.last>60000)sync()}else if(dirty)sync()});
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&!DISK)navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+/* ---------- GUIDA ---------- */
+function renderGuide(v){
+  v.innerHTML=`<div class="wrap guide">
+  <h2>Come funziona</h2>
+  <p>Scrivi (o importa) i tuoi appunti in formato Markdown. StudioMD li trasforma in uno <b>schema a stella</b> e in <b>flashcard</b> con ripetizione dilazionata. Tutto resta salvato in questo browser, senza internet.</p>
+  <h2>Il formato del testo</h2>
+  <table>
+    <tr><th>Scrivi</th><th>Diventa</th></tr>
+    <tr><td><code># Titolo</code></td><td>Il centro della stella</td></tr>
+    <tr><td><code>## Ramo</code>, <code>### Sotto-ramo</code></td><td>I raggi principali e le loro diramazioni</td></tr>
+    <tr><td><code>- punto</code> (rientra con 2 spazi per i sotto-punti)</td><td>Le foglie dello schema</td></tr>
+    <tr><td><code>- Domanda? :: Risposta</code></td><td>Una flashcard (e un nodo con la risposta nello schema)</td></tr>
+    <tr><td><code>- Domanda? ::</code> e sotto, rientrati di 2 spazi, <code>- punto</code> oppure <code>1. punto</code></td><td>Una flashcard con la risposta a elenco, puntato o numerato</td></tr>
+    <tr><td><code>- **Termine**: definizione</code></td><td>Una flashcard «Termine → definizione»</td></tr>
+    <tr><td><code>![descrizione](img/carta.png)</code></td><td>Un'immagine, nella domanda o nella risposta di una flashcard (percorso relativo al file .md)</td></tr>
+    <tr><td><code>- Il trattato di {{Maastricht}} è del {{1992}}</code></td><td>Una flashcard a completamento: «Il trattato di [ … ] è del [ … ]»</td></tr>
+  </table>
+  <p>In più, con «Genera flashcard anche dallo schema», ogni nodo con almeno due punti produce la domanda «quali sono i punti principali?».</p>
+  <p><b>Consiglio:</b> una flashcard = un solo fatto. Punti brevi (parole chiave, non frasi intere) rendono lo schema pulito e le carte facili da ripassare.</p>
+  <h2>Esempio</h2>
+  <pre>${esc(SAMPLE)}</pre>
+  <h2>Lo schema</h2>
+  <ul><li>I rami si <b>distribuiscono da soli</b>, bilanciati tra destra e sinistra, senza mai sovrapporsi.</li>
+  <li><b>Trascina un ramo principale</b> per ritoccarne la posizione (si sposta con tutto il suo contenuto); portalo <b>oltre il centro</b> per passarlo sull'altro lato. <b>Trascina un punto su o giù</b> per cambiarne l'ordine tra i vicini: resta sempre allineato. «Ridistribuisci» annulla tutti i ritocchi.</li>
+  <li><b>Livelli</b>: mostra solo i rami, 2 o 3 livelli, per tenere lo schema leggibile. Clic su un nodo per aprirlo o chiuderlo.</li>
+  <li><b>Copri tutto</b>: i nodi diventano «?». Prova a ricordare, poi clicca per scoprirli uno alla volta.</li>
+  <li><b>Richiamo libero</b>: scrivi a memoria ciò che ricordi di un ramo e confrontalo con gli appunti.</li>
+  <li>Le <b>immagini</b> scritte nel testo (<code>![descrizione](percorso)</code>) compaiono anche dentro i nodi dello schema.</li>
+  <li>Trascina lo sfondo per spostarti, rotellina o pizzico per lo zoom. <b>Stampa</b> per carta o PDF, <b>PNG</b> per scaricare lo schema come immagine (anche «coperto», da usare come esercizio).</li></ul>
+  <h2>Le flashcard</h2>
+  <p>Dopo aver girato la carta valuta la risposta: «Non la sapevo» la ripropone subito, «Incerta» domani, «La sapevo» la sposta più avanti (1, 3, 7, 14, 30 giorni). Tasti: <code>Spazio</code> gira, <code>1</code> <code>2</code> <code>3</code> valutano. «Ripasso di oggi», nella barra laterale, mescola le carte in scadenza di tutti gli appunti.</p>
+  <p><b>Data della verifica</b>: impostala nella scheda Flashcard. «Piano di oggi» propone i ripassi in scadenza più una quota di carte nuove, calcolata per finirle due giorni prima; ogni carta torna almeno una volta prima della verifica. <b>Carte ostiche</b>: quelle sbagliate almeno 4 volte vengono segnalate, perché conviene riscriverle.</p>
+  <h2>Un metodo di studio consigliato</h2>
+  <ol><li><b>Prima lettura</b>: scrivi gli appunti e guarda lo schema completo per capire la struttura.</li>
+  <li><b>Subito dopo</b>: «Copri tutto» e ricostruisci lo schema ramo per ramo.</li>
+  <li><b>Ogni giorno</b>: 10 minuti di «Ripasso di oggi». Poche carte tutti i giorni valgono più di una maratona.</li>
+  <li><b>Prima della verifica</b>: «Richiamo libero» su ogni ramo; ripassa solo i punti rimasti in rosso.</li>
+  <li>Usa il timer ⏱ in alto: 25 minuti concentrati, 5 di pausa vera.</li></ol>
+  <h2>La cartella flashcards</h2>
+  <p>Accanto a questo file c'è la cartella <code>flashcards/</code>, con una sottocartella per argomento e dentro i file <code>.md</code>. L'app la legge da sola a ogni apertura (tramite <code>flashcards/indice.js</code>, rigenerato con <code>python3 flashcards/aggiorna_indice.py</code>). In alternativa usa «Importa cartella». I progressi di studio restano legati al testo della domanda.</p>
+  <h2>Studiare camminando</h2>
+  <p>«🚶 Ripassa camminando» (barra laterale) o «🚶 Cammina» (scheda Flashcard) aprono il ripasso a schermo intero: testo grande, tre pulsanti enormi, schermo sempre acceso. La <b>voce</b> legge domanda e risposta. Si può valutare senza guardare: scorri a <b>sinistra</b> = non la sapevo, <b>su</b> = incerta, <b>destra</b> = la sapevo. Con <b>Mani libere</b> l'app legge domande e risposte una dopo l'altra, senza valutarle: utile con gli auricolari. Guarda sempre dove cammini.</p>
+  <h2>Computer e telefono sincronizzati</h2>
+  <p>Con «☁» (in basso nella barra laterale) l'app allinea appunti, progressi e immagini tra i dispositivi tramite Supabase. La versione web non contiene carte: arrivano dal tuo account dopo l'accesso. Istruzioni in <code>webapp/LEGGIMI.md</code>.</p>
+  <h2>Non perdere i dati</h2>
+  <p>Gli appunti vivono nella memoria di questo browser: usa ogni tanto <b>Backup</b> (in basso a sinistra) e <b>Esporta .md</b> per averne una copia su file.</p>
+  </div>`;
+}
+render();
+sync();
+</script>
+</body>
+</html>
