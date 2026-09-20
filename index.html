@@ -220,7 +220,7 @@ code{background:color-mix(in srgb,var(--accent) 12%,transparent);padding:1px 5px
   <div class="actions">
     <button class="primary" id="new">+ Nuovo</button>
     <button id="imp">Importa .md</button>
-    <button id="impdir" title="Scegli la cartella flashcards: ogni sottocartella è un argomento">Importa cartella</button>
+    <button id="impdir" title="Scegli la cartella LEZIONI (o la sola flashcards): importa i pacchetti e le loro immagini">Importa cartella</button>
     <input type="file" id="dir" webkitdirectory multiple hidden>
     <input type="file" id="file" accept=".md,.markdown,.txt,text/markdown,text/plain" multiple hidden>
   </div>
@@ -261,7 +261,7 @@ const $=(s,r=document)=>r.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let IMGBASE=''; // cartella rispetto a cui risolvere le immagini degli appunti aperti
 const normPath=p=>{const o=[];p.split('/').forEach(x=>{if(x==='..'&&o.length&&o[o.length-1]!=='..')o.pop();else if(x&&x!=='.')o.push(x)});return o.join('/')};
-const IMGS={},IMGH={},IMGD={}; // immagini scaricate dal cloud (telefono): chiave = percorso normalizzato; IMGD serve all'esportazione PNG
+const IMGS={},IMGH={},IMGD={},IMGUP=new Set(); // immagini scaricate dal cloud (telefono): chiave = percorso normalizzato; IMGD serve all'esportazione PNG
 const setImg=(k,data,h)=>{const [hd,b]=data.split(','),bin=atob(b),a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);
   const u=URL.createObjectURL(new Blob([a],{type:(hd.match(/:(.*?);/)||[])[1]||'image/jpeg'}));if(IMGS[k])URL.revokeObjectURL(IMGS[k]);IMGS[k]=u;IMGD[u]=data;IMGH[k]=h};
 const imgUrl=u=>{if(/^([a-z]+:|\/)/i.test(u))return u;const k=normPath(IMGBASE+u);return IMGS[k]||k};
@@ -500,14 +500,26 @@ $('#new').onclick=()=>{
 };
 $('#imp').onclick=()=>$('#file').click();
 $('#impdir').onclick=()=>$('#dir').click();
-$('#dir').onchange=e=>{
-  const fs=[...e.target.files].filter(f=>/\.(md|markdown)$/i.test(f.name));e.target.value='';
+$('#dir').onchange=async e=>{ // importa i .md e anche le immagini che citano (ridotte), pronte per il cloud: così basta la versione web
+  const all=[...e.target.files];e.target.value='';
+  const rel=f=>(f.webkitRelativePath||f.name).split('/').slice(1).join('/')||f.name;
+  const parent=all.some(f=>/^flashcards\/.+\.(md|markdown)$/i.test(rel(f))); // è stata scelta la cartella che CONTIENE flashcards/ (es. LEZIONI)
+  const fs=all.filter(f=>/\.(md|markdown)$/i.test(f.name)&&(!parent||/^flashcards\//i.test(rel(f))));
   if(!fs.length){alert('Nessun file .md nella cartella scelta.');return}
-  Promise.all(fs.map(f=>f.text().then(md=>[(f.webkitRelativePath||f.name).split('/').slice(1).join('/')||f.name,md]))).then(rs=>{
-    const files=Object.fromEntries(rs);Object.keys(files).forEach(k=>delete S.ignore[k]); // importare a mano una cartella riattiva anche i pacchetti eliminati
-    const n=syncFiles(files);adoptProgress();if(!cur())S.current=S.decks[0]?S.decks[0].id:null;
-    save();render();alert(n?n+' appunti aggiunti o aggiornati.':'Tutto già aggiornato.');
-  });
+  const files={};for(const f of fs)files[parent?rel(f).slice(11):rel(f)]=await f.text();
+  Object.keys(files).forEach(k=>delete S.ignore[k]); // importare a mano una cartella riattiva anche i pacchetti eliminati
+  const n=syncFiles(files);adoptProgress();if(!cur())S.current=S.decks[0]?S.decks[0].id:null;
+  const byKey={};all.forEach(f=>{if(/\.(png|jpe?g|gif|webp)$/i.test(f.name))byKey[parent?rel(f):'flashcards/'+rel(f)]=f});
+  const need=neededImages();let ok=0;const missing=[];
+  $('#view').innerHTML='<div class="empty"><div><h2>Importo le immagini…</h2><p id="impmsg"></p></div></div>';
+  for(const k of need){const f=byKey[k];if(!f){if(!IMGS[k])missing.push(k);continue}
+    try{const raw=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=()=>rej(fr.error);fr.readAsDataURL(f)});
+      const h=hash(raw.length+raw.slice(-300));if(IMGH[k]===h){ok++;continue}
+      const data=await shrink(raw);setImg(k,data,h);IMGUP.add(k);ok++;if($('#impmsg'))$('#impmsg').textContent=ok+' di '+need.length;
+      try{await idbPut(k,{h,data,up:true})}catch(x){}}catch(x){missing.push(k)}}
+  Object.keys(cache).forEach(k=>delete cache[k]);dirty=true;save();render();
+  alert(`${n?n+' pacchetti aggiunti o aggiornati':'Pacchetti già aggiornati'}. Immagini: ${ok} su ${need.length}.`+(missing.length?`\n\nNon trovate nella cartella scelta (${missing.length}):\n${missing.slice(0,6).join('\n')}${missing.length>6?'\n…':''}\n\nSe sono in «carte/», scegli la cartella LEZIONI (quella che contiene sia flashcards sia carte) invece della sola flashcards.`:''));
+  if(AUTH)sync();
 };
 $('#file').onchange=e=>{importFiles(e.target.files);e.target.value=''};
 function importFiles(files){
@@ -1041,6 +1053,9 @@ async function syncImages(force){
     for(const k of todo){if(!IM[k]){cloud.img.note=cloud.img.note||'Alcune immagini mancano in immagini.js: esegui «python3 flashcards/aggiorna_indice.py».';continue}const h=hash(IM[k].length+IM[k].slice(-300));if(rh[k]===h)continue;
       await upsert('studiomd_images',[{user_id:AUTH.uid,key:k,h,data:await shrink(IM[k]),t:Date.now()}],'user_id,key');cloud.img.remote++}
   }else{
+    for(const k of [...IMGUP]){ // immagini importate su questo dispositivo con «Importa cartella»: vanno nel cloud
+      if(IMGS[k]&&rh[k]!==IMGH[k]){await upsert('studiomd_images',[{user_id:AUTH.uid,key:k,h:IMGH[k],data:IMGD[IMGS[k]],t:Date.now()}],'user_id,key');if(!rh[k])cloud.img.remote++;rh[k]=IMGH[k]}
+      IMGUP.delete(k);try{await idbPut(k,{h:IMGH[k],data:IMGD[IMGS[k]]})}catch(e){}}
     let got=0;
     for(const k of need){if(!rh[k]||IMGH[k]===rh[k])continue;
       const r=await api('/rest/v1/studiomd_images?select=data,h&key=eq.'+encodeURIComponent(k));if(!r[0])continue;
@@ -1068,7 +1083,7 @@ function renderCloud(v){
   $('#cnow').onclick=()=>sync();$('#cout').onclick=()=>{setAuth(null);render()};
   if($('#cimg'))$('#cimg').onclick=async()=>{cloud.busy=true;render();try{await freshToken();await syncImages(true);cloud.err=''}catch(e){cloud.err=e.message}cloud.busy=false;render()};
 }
-idbAll().then(o=>{let n=0;Object.keys(o).forEach(k=>{try{setImg(k,o[k].data,o[k].h);n++}catch(e){}});if(n&&!DISK){Object.keys(cache).forEach(k=>delete cache[k]);if(!session)render()}}).catch(()=>{});
+idbAll().then(o=>{let n=0;Object.keys(o).forEach(k=>{try{setImg(k,o[k].data,o[k].h);if(o[k].up)IMGUP.add(k);n++}catch(e){}});if(n&&!DISK){Object.keys(cache).forEach(k=>delete cache[k]);if(!session)render()}}).catch(()=>{});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(Date.now()-cloud.last>60000)sync()}else if(dirty)sync()});
 if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&!DISK)navigator.serviceWorker.register('sw.js').catch(()=>{});
 
