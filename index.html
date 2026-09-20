@@ -508,7 +508,8 @@ $('#dir').onchange=async e=>{ // importa i .md e anche le immagini che citano (r
   if(!fs.length){alert('Nessun file .md nella cartella scelta.');return}
   const files={};for(const f of fs)files[parent?rel(f).slice(11):rel(f)]=await f.text();
   Object.keys(files).forEach(k=>delete S.ignore[k]); // importare a mano una cartella riattiva anche i pacchetti eliminati
-  const n=syncFiles(files);adoptProgress();if(!cur())S.current=S.decks[0]?S.decks[0].id:null;
+  const whole=parent||/^flashcards$/i.test(((all[0]||{}).webkitRelativePath||'').split('/')[0]); // è stata scelta tutta la cartella flashcards: i pacchetti il cui file non c'è più vengono tolti
+  const n=syncFiles(files,whole);adoptProgress();if(!cur())S.current=S.decks[0]?S.decks[0].id:null;
   const byKey={};all.forEach(f=>{if(/\.(png|jpe?g|gif|webp)$/i.test(f.name))byKey[parent?rel(f):'flashcards/'+rel(f)]=f});
   const need=neededImages();let ok=0;const missing=[];
   $('#view').innerHTML='<div class="empty"><div><h2>Importo le immagini…</h2><p id="impmsg"></p></div></div>';

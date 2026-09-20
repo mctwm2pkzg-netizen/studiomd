@@ -1,5 +1,5 @@
 // Funzionamento offline: prima la rete (per avere sempre l'ultima versione), altrimenti la copia salvata.
-const V = 'studiomd-20260920-083255';
+const V = 'studiomd-20260920-084529';
 const FILES = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
