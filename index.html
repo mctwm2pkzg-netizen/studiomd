@@ -165,6 +165,7 @@ img{max-width:100%;border-radius:8px}
 .cloud input{width:100%;max-width:360px;display:block;margin:6px 0 12px;border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:10px 12px;font-size:16px}
 .cloud .err{color:var(--bad);font-weight:600}
 .cloud .okmsg{color:var(--good);font-weight:600}
+.noimg{display:inline-block;border:1px dashed var(--line);border-radius:8px;padding:6px 10px;color:var(--muted);font-size:13.5px;font-weight:400}
 /* richiamo libero */
 .recall textarea{height:220px;font-family:inherit;font-size:15px}
 .rc{display:flex;gap:8px;align-items:flex-start;padding:5px 8px;border-radius:8px;margin:2px 0}
@@ -264,7 +265,7 @@ const IMGS={},IMGH={},IMGD={}; // immagini scaricate dal cloud (telefono): chiav
 const setImg=(k,data,h)=>{const [hd,b]=data.split(','),bin=atob(b),a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);
   const u=URL.createObjectURL(new Blob([a],{type:(hd.match(/:(.*?);/)||[])[1]||'image/jpeg'}));if(IMGS[k])URL.revokeObjectURL(IMGS[k]);IMGS[k]=u;IMGD[u]=data;IMGH[k]=h};
 const imgUrl=u=>{if(/^([a-z]+:|\/)/i.test(u))return u;const k=normPath(IMGBASE+u);return IMGS[k]||k};
-const inline=s=>esc(s).replace(/!\[([^\]]*)\]\(([^)]+?)\)/g,(m,a,u)=>`<img alt="${a}" src="${encodeURI(imgUrl(u.trim()))}">`).replace(/\{\{(.+?)\}\}/g,'<span class="cz">$1</span>').replace(/\[([^\]]+)\]\([^)]*\)/g,'$1').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g,'$1<i>$2</i>').replace(/`([^`]+)`/g,'<code>$1</code>');
+const inline=s=>esc(s).replace(/!\[([^\]]*)\]\(([^)]+?)\)/g,(m,a,u)=>`<img alt="${a}" src="${encodeURI(imgUrl(u.trim()))}" onerror="const s=document.createElement('span');s.className='noimg';s.textContent='🖼 '+this.alt+' · immagine non ancora disponibile su questo dispositivo (apri ☁ per i dettagli)';this.replaceWith(s)">`).replace(/\{\{(.+?)\}\}/g,'<span class="cz">$1</span>').replace(/\[([^\]]+)\]\([^)]*\)/g,'$1').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g,'$1<i>$2</i>').replace(/`([^`]+)`/g,'<code>$1</code>');
 const plain=s=>s.replace(/!\[([^\]]*)\]\([^)]*\)/g,(m,a)=>('🖼 '+a).trim()).replace(/\{\{(.+?)\}\}/g,'$1').replace(/\[([^\]]+)\]\([^)]*\)/g,'$1').replace(/\*\*(.+?)\*\*/g,'$1').replace(/(^|[^*])\*([^*\s][^*]*)\*/g,'$1$2').replace(/`([^`]+)`/g,'$1');
 const hash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36)};
 const today=()=>{const d=new Date();return Math.floor((d.getTime()-d.getTimezoneOffset()*6e4)/864e5)};
@@ -1031,18 +1032,20 @@ const idbAll=async()=>{const db=await idb();return new Promise(res=>{const out={
 const shrink=src=>new Promise((res,rej)=>{const im=new Image();im.onload=()=>{const k=Math.min(1,1200/Math.max(im.naturalWidth,im.naturalHeight)),c=document.createElement('canvas');c.width=Math.round(im.naturalWidth*k);c.height=Math.round(im.naturalHeight*k);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.82))};im.onerror=()=>rej(new Error('immagine non leggibile'));im.src=src});
 function neededImages(){const out=new Set();S.decks.forEach(d=>{const base=d.src?'flashcards/'+d.src.split('/').slice(0,-1).join('/')+'/':'';(d.md.match(/!\[[^\]]*\]\(([^)]+?)\)/g)||[]).forEach(m=>{const u=m.replace(/^.*\(/,'').replace(/\)$/,'').trim();if(!/^([a-z]+:|\/)/i.test(u))out.add(normPath(base+u))})});return [...out]}
 async function syncImages(force){
-  const need=neededImages();if(!need.length)return;
-  const R=await api('/rest/v1/studiomd_images?select=key,h'),rh={};R.forEach(r=>rh[r.key]=r.h);
+  const need=neededImages();cloud.img={need:need.length,remote:0,local:DISK?need.length:need.filter(k=>IMGS[k]).length,note:''};if(!need.length)return;
+  const R=await api('/rest/v1/studiomd_images?select=key,h'),rh={};R.forEach(r=>rh[r.key]=r.h);cloud.img.remote=need.filter(k=>rh[k]).length;
   if(DISK){
     const todo=need.filter(k=>force||!rh[k]);if(!todo.length)return;
     await loadImages();const IM=window.STUDIOMD_IMAGES||{};
-    for(const k of todo){if(!IM[k])continue;const h=hash(IM[k].length+IM[k].slice(-300));if(rh[k]===h)continue;
-      await upsert('studiomd_images',[{user_id:AUTH.uid,key:k,h,data:await shrink(IM[k]),t:Date.now()}],'user_id,key')}
+    if(!window.STUDIOMD_IMAGES)cloud.img.note='Non riesco a leggere flashcards/immagini.js: esegui «python3 flashcards/aggiorna_indice.py».';
+    for(const k of todo){if(!IM[k]){cloud.img.note=cloud.img.note||'Alcune immagini mancano in immagini.js: esegui «python3 flashcards/aggiorna_indice.py».';continue}const h=hash(IM[k].length+IM[k].slice(-300));if(rh[k]===h)continue;
+      await upsert('studiomd_images',[{user_id:AUTH.uid,key:k,h,data:await shrink(IM[k]),t:Date.now()}],'user_id,key');cloud.img.remote++}
   }else{
     let got=0;
     for(const k of need){if(!rh[k]||IMGH[k]===rh[k])continue;
       const r=await api('/rest/v1/studiomd_images?select=data,h&key=eq.'+encodeURIComponent(k));if(!r[0])continue;
-      setImg(k,r[0].data,r[0].h);await idbPut(k,{h:r[0].h,data:r[0].data});got++}
+      setImg(k,r[0].data,r[0].h);got++;cloud.img.local++;
+      try{await idbPut(k,{h:r[0].h,data:r[0].data})}catch(e){cloud.img.note='Questo browser non permette di conservare le immagini: verranno riscaricate a ogni apertura.'}}
     if(got){Object.keys(cache).forEach(k=>delete cache[k]);if(!session)render()}
   }
 }
@@ -1059,6 +1062,7 @@ function renderCloud(v){
   }
   box(`<p>Accesso effettuato come <b>${esc(AUTH.email||'')}</b>.</p>
     <p class="${cloud.err?'err':'okmsg'}">${cloud.busy?'Sincronizzazione in corso…':cloud.err?'Errore: '+esc(cloud.err):cloud.last?'Tutto sincronizzato alle '+new Date(cloud.last).toLocaleTimeString('it-IT'):'In attesa della prima sincronizzazione.'}</p>
+    ${cloud.img?`<p>🖼 Immagini: <b>${cloud.img.need}</b> usate dalle carte · <b>${cloud.img.remote}</b> nel cloud · <b>${cloud.img.local}</b> su questo dispositivo. ${esc(cloud.img.note)}</p>`:''}
     <div class="row"><button class="primary" id="cnow">Sincronizza ora</button>${DISK?'<button id="cimg" title="Ricarica nel cloud tutte le immagini delle carte, anche quelle già presenti">Ricarica le immagini nel cloud</button>':''}<button id="cout">Esci</button></div>
     <p class="hint">La sincronizzazione parte da sola all'apertura, dopo ogni ripasso e quando torni sull'app. Se la stessa carta è stata ripassata su due dispositivi, vale il ripasso più recente. ${DISK?'Questo è il computer con la cartella flashcards: le nuove carte scritte nei file arrivano al telefono dopo che hai aperto l\'app qui.':'Le carte si scrivono sul computer (cartella flashcards): qui arrivano da sole.'}</p>`);
   $('#cnow').onclick=()=>sync();$('#cout').onclick=()=>{setAuth(null);render()};
