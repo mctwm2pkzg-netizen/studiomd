@@ -166,6 +166,14 @@ img{max-width:100%;border-radius:8px}
 .cloud .err{color:var(--bad);font-weight:600}
 .cloud .okmsg{color:var(--good);font-weight:600}
 .noimg{display:inline-block;border:1px dashed var(--line);border-radius:8px;padding:6px 10px;color:var(--muted);font-size:13.5px;font-weight:400}
+/* immagine a tutto schermo */
+#view img,.node image{cursor:zoom-in}
+#zoom{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.93);display:none;overflow:auto;cursor:zoom-out;touch-action:pinch-zoom pan-x pan-y;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#zoom.on{display:flex}
+#zoom img{margin:auto;max-width:100%;max-height:100%;object-fit:contain;border-radius:0;background:#fff}
+#zoom.big img{max-width:none;max-height:none;width:220%;cursor:zoom-out}
+#zoom button{position:fixed;top:max(12px,env(safe-area-inset-top));right:14px;z-index:61;font-size:20px;min-width:48px;min-height:48px;border-radius:24px;background:rgba(30,30,30,.85);color:#fff;border-color:#666}
+#zoom small{position:fixed;left:0;right:0;bottom:max(10px,env(safe-area-inset-bottom));text-align:center;color:#ccc;font-size:13px;pointer-events:none}
 /* richiamo libero */
 .recall textarea{height:220px;font-family:inherit;font-size:15px}
 .rc{display:flex;gap:8px;align-items:flex-start;padding:5px 8px;border-radius:8px;margin:2px 0}
@@ -251,6 +259,7 @@ code{background:color-mix(in srgb,var(--accent) 12%,transparent);padding:1px 5px
   </header>
   <div id="view"></div>
 </main>
+<div id="zoom" role="dialog" aria-label="Immagine a tutto schermo"><button id="zoomx" aria-label="Chiudi">✕</button><img alt=""><small></small></div>
 <div id="drop">Rilascia i file .md per importarli</div>
 
 <script src="config.js"></script>
@@ -756,7 +765,7 @@ function renderSchema(v,d){
     if(pts.size!==1){down=null;return}
     moved=false;const g=e.target.closest&&e.target.closest('.node'),n=g&&byId[+g.dataset.id];
     const p=n&&(d.pos||{})[n.key]||{dx:0,dy:0};tmpMove=null;
-    down={n,x:e.clientX,y:e.clientY,dx:p.dx,dy:p.dy};
+    down={n,x:e.clientX,y:e.clientY,dx:p.dx,dy:p.dy,img:e.target.tagName==='image'?e.target.getAttribute('href'):null};
   };
   svg.onpointermove=e=>{
     const p=pts.get(e.pointerId);if(!p)return;
@@ -775,8 +784,9 @@ function renderSchema(v,d){
   };
   const up=e=>{
     if(!pts.has(e.pointerId))return;pts.delete(e.pointerId);pinch=0;if(!pts.size)svg.classList.remove('drag');
-    const n=down&&down.n;down=null;
+    const n=down&&down.n,zimg=down&&down.img;down=null;
     if(!n||e.type==='pointercancel')return;
+    if(!moved&&zimg&&!ui.covered.has(n.id)){openZoom(zimg,(n.text.match(IMGRE)||[])[1]||'');return}
     if(moved){ // un ramo principale trascinato oltre il centro passa sull'altro lato; gli altri nodi si riordinano tra fratelli
       if(n.depth>1){
         const sib=kids(n.parent).filter(x=>x!==n),cy=n.y+n.h/2,at=sib.filter(x=>x.y+x.h/2<cy).length;
@@ -920,6 +930,14 @@ addEventListener('keydown',e=>{
   if(e.key===' '||e.key==='Enter'){e.preventDefault();if(!session.flipped){session.flipped=true;renderSession($('#view'))}}
   else if(session.flipped&&'123'.includes(e.key))answer(+e.key-1);
 });
+
+/* ---------- IMMAGINE A TUTTO SCHERMO ---------- */
+function openZoom(src,alt){const z=$('#zoom'),im=z.querySelector('img');im.src=src;im.alt=alt||'';z.querySelector('small').textContent=(alt?alt+' · ':'')+'tocca l\'immagine per ingrandire, ✕ o lo sfondo per chiudere';z.classList.remove('big');z.classList.add('on');z.scrollTo(0,0)}
+function closeZoom(){$('#zoom').classList.remove('on','big')}
+$('#zoom').onclick=e=>{if(e.target.tagName==='IMG'){const z=$('#zoom');z.classList.toggle('big');if(z.classList.contains('big'))z.scrollTo((z.scrollWidth-z.clientWidth)/2,(z.scrollHeight-z.clientHeight)/2)}else closeZoom()};
+addEventListener('keydown',e=>{if(e.key==='Escape')closeZoom()});
+// clic su un'immagine di una carta: si apre a tutto schermo invece di girare la carta
+document.addEventListener('click',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&t.closest('#view')){e.preventDefault();e.stopPropagation();openZoom(t.currentSrc||t.src,t.alt)}},true);
 
 /* ---------- CAMMINA: ripasso a schermo intero, pulsanti enormi, voce ---------- */
 let walk={voice:true,auto:false},walkT=0,wakeLock=null;
@@ -1133,6 +1151,7 @@ function renderGuide(v){
   <li><b>⏸ Pausa</b>: un pacchetto in pausa resta consultabile ma esce dal ripasso di oggi. Utile per gli argomenti già verificati.</li>
   <li><b>Spostare o accorpare</b>: se sposti una carta in un altro file (stessa domanda) i suoi progressi la seguono; se un file sparisce dalla cartella, il pacchetto sparisce dall'app.</li>
   <li>Con molti pacchetti compare la casella <b>Cerca</b>.</li></ul>
+  <p><b>Immagini a tutto schermo</b>: tocca un'immagine in una carta, nel ripasso o nello schema per aprirla grande; toccala ancora per ingrandirla, ✕ per chiudere.</p>
   <h2>Studiare camminando</h2>
   <p>«🚶 Ripassa camminando» (barra laterale) o «🚶 Cammina» (scheda Flashcard) aprono il ripasso a schermo intero: testo grande, tre pulsanti enormi, schermo sempre acceso. La <b>voce</b> legge domanda e risposta. Si può valutare senza guardare: scorri a <b>sinistra</b> = non la sapevo, <b>su</b> = incerta, <b>destra</b> = la sapevo. Con <b>Mani libere</b> l'app legge domande e risposte una dopo l'altra, senza valutarle: utile con gli auricolari. Guarda sempre dove cammini.</p>
   <h2>Computer e telefono sincronizzati</h2>
